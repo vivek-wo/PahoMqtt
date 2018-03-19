@@ -1,13 +1,19 @@
 package vivek.wo.mqtt;
 
+import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
+import android.content.ServiceConnection;
+import android.os.IBinder;
+import android.os.RemoteException;
+import android.util.Log;
 
 /**
  * Created by VIVEK-WO on 2018/3/12.
  */
 
 public class PahoMqtt {
+    private static final String TAG = "PahoMqtt";
     private final String serverURI;
     private final String clientId;
     private final ConnectOptions connectOptions;
@@ -22,6 +28,8 @@ public class PahoMqtt {
         this.subscribtionTopics = builder.subscribtionTopics;
     }
 
+    private IClient iClient;
+
     public void setup(Context context) {
         Intent intent = new Intent(context, MqttService.class);
         intent.setAction("vivek.wo.mqtt.MqttService.action.setup");
@@ -30,7 +38,40 @@ public class PahoMqtt {
         intent.putExtra("connectOptions", this.connectOptions);
         intent.putExtra("subscribtionTopics", this.subscribtionTopics);
         context.startService(intent);
+        context.bindService(intent, new ServiceConnection() {
+            @Override
+            public void onServiceConnected(ComponentName name, IBinder service) {
+                Log.d(TAG, "onServiceConnected: ");
+                iClient = IClient.Stub.asInterface(service);
+                try {
+                    iClient.addIClientListener(iClientListener);
+                } catch (RemoteException e) {
+                    e.printStackTrace();
+                }
+            }
+
+            @Override
+            public void onServiceDisconnected(ComponentName name) {
+                Log.d(TAG, "onServiceDisconnected: ");
+                try {
+                    iClient.removeIClientListener(iClientListener);
+                } catch (RemoteException e) {
+                    e.printStackTrace();
+                }
+                iClient = null;
+            }
+        }, Context.BIND_AUTO_CREATE);
     }
+
+    private IClientListener iClientListener = new IClientListener.Stub() {
+
+        @Override
+        public void messageArrived(String topic, int messageId, int qos, String message) throws
+                RemoteException {
+            Log.d(TAG, "messageArrived: topic:" + topic + " ,messageId:" + messageId
+                    + " ,qos:" + qos + " ,message:" + message);
+        }
+    };
 
     public static final class Builder {
         private final String serverURI;

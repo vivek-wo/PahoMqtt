@@ -12,6 +12,7 @@ class MainActivity : AppCompatActivity() {
         setContentView(R.layout.activity_main)
         PahoMqtt.Builder("tcp://10.0.5.88:1883", "e4a02f31b247d475")
                 .setSubscribtionTopics(arrayOf("local/e4a02f31b247d475"))
+                .setAutomaticReconnect(false)
                 .build()
                 .setup(this);
 

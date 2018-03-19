@@ -19,7 +19,8 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-        <service android:name="vivek.wo.mqtt.MqttService" />
+        <service android:name="vivek.wo.mqtt.MqttService"
+            android:process=":mqtt"/>
     </application>
 
 </manifest>

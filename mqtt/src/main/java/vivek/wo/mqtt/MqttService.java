@@ -1,18 +1,23 @@
 package vivek.wo.mqtt;
 
-import android.annotation.SuppressLint;
+import android.app.AlarmManager;
+import android.app.PendingIntent;
 import android.app.Service;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.net.ConnectivityManager;
+import android.net.NetworkInfo;
+import android.os.Build;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.IBinder;
-import android.os.Message;
-import android.os.PowerManager;
+import android.os.Parcel;
+import android.os.RemoteCallbackList;
+import android.os.RemoteException;
 import android.support.annotation.Nullable;
+import android.util.Log;
 
 import org.eclipse.paho.client.mqttv3.IMqttActionListener;
 import org.eclipse.paho.client.mqttv3.IMqttDeliveryToken;
@@ -28,12 +33,18 @@ import org.eclipse.paho.client.mqttv3.MqttMessage;
  */
 
 public class MqttService extends Service implements MqttCallbackExtended {
+    private static final String TAG = MqttService.class.getSimpleName();
     private static final int DISCONNECT_QUIESCE_TIMEOUT = 0;
 
-    private static final int HANDLER_MESSAGE_CONNECT = 0X10;
-    private static final int HANDLER_MESSAGE_SUBSCRIBE = 0X11;
+    private static final int ALARM_DELAYINMILLISECONDS = 5 * 1000;
+    private static final int ALARM_MAX_DELAYINMILLISECONDS = 2 * 60 * 1000;
+
+    private RemoteCallbackList<IClientListener> mIClientListenerList = new RemoteCallbackList<>();
 
     private NetworkConnectionIntentReceiver mNetworkConnectionIntentReceiver;
+    private AlarmManager mAlarmManager;
+    private PendingIntent mPendingIntent;
+    private ConnectivityManager mConnectivityManager;
 
     private String mServerURI;
     private String mClientId;
@@ -42,10 +53,50 @@ public class MqttService extends Service implements MqttCallbackExtended {
     private String[] mSubscribtionTopics;
     private Handler mHandler;
 
+    private long mDelayInMilliseconds = ALARM_DELAYINMILLISECONDS;
+
+    private IClient.Stub iClient = new IClient.Stub() {
+
+        @Override
+        protected boolean onTransact(int code, Parcel data, Parcel reply, int flags) throws
+                RemoteException {
+            return super.onTransact(code, data, reply, flags);
+        }
+
+        @Override
+        public void addIClientListener(IClientListener iClientListener) throws RemoteException {
+            mIClientListenerList.register(iClientListener);
+        }
+
+        @Override
+        public void removeIClientListener(IClientListener iClientListener) throws RemoteException {
+            mIClientListenerList.unregister(iClientListener);
+        }
+    };
+
+    class AlarmReceiver extends BroadcastReceiver {
+
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            Log.d(TAG, "onReceive: " + intent.getAction());
+            if (mDelayInMilliseconds < ALARM_MAX_DELAYINMILLISECONDS) {
+                mDelayInMilliseconds += ALARM_DELAYINMILLISECONDS;
+            }
+            mHandler.post(new Runnable() {
+                @Override
+                public void run() {
+                    if (mMqttClient == null || !mMqttClient.isConnected()) {
+                        connect();
+                    }
+                }
+            });
+        }
+    }
+
     private class NetworkConnectionIntentReceiver extends BroadcastReceiver {
         @Override
         public void onReceive(Context context, Intent intent) {
-
+            Log.d(TAG, "onReceive: " + intent.getAction());
         }
     }
 
@@ -64,18 +115,54 @@ public class MqttService extends Service implements MqttCallbackExtended {
         }
     }
 
+    private boolean isNetworkConnected() {
+        NetworkInfo networkInfo = mConnectivityManager.getActiveNetworkInfo();
+        boolean isConnected = ((networkInfo != null)
+                && (networkInfo.isAvailable())
+                && (networkInfo.isConnected()));
+        Log.d(TAG, "check isNetworkConnected: " + isConnected);
+        return isConnected;
+    }
+
+    private void startKeepAlive(long delayInMilliseconds) {
+        long nextAlarmInMilliseconds = System.currentTimeMillis()
+                + delayInMilliseconds;
+        Log.d(TAG, "Schedule next alarm at " + nextAlarmInMilliseconds);
+        if (Build.VERSION.SDK_INT >= 23) {
+            // In SDK 23 and above, dosing will prevent setExact, setExactAndAllowWhileIdle will
+            // force
+            // the device to run this task whilst dosing.
+            Log.d(TAG, "Alarm scheule using setExactAndAllowWhileIdle, next: " +
+                    delayInMilliseconds);
+            mAlarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP,
+                    nextAlarmInMilliseconds,
+                    mPendingIntent);
+        } else if (Build.VERSION.SDK_INT >= 19) {
+            Log.d(TAG, "Alarm scheule using setExact, delay: " + delayInMilliseconds);
+            mAlarmManager.setExact(AlarmManager.RTC_WAKEUP, nextAlarmInMilliseconds,
+                    mPendingIntent);
+        } else {
+            mAlarmManager.set(AlarmManager.RTC_WAKEUP, nextAlarmInMilliseconds,
+                    mPendingIntent);
+        }
+    }
+
+    private void stopKeepAlive() {
+        mAlarmManager.cancel(mPendingIntent);
+    }
+
     @Override
     public void onCreate() {
         super.onCreate();
+        mConnectivityManager = (ConnectivityManager) getSystemService(CONNECTIVITY_SERVICE);
+        mAlarmManager = (AlarmManager) getSystemService(ALARM_SERVICE);
+        String action = getClass().getName() + ".reveicer.action.alarm";
+        mPendingIntent = PendingIntent.getBroadcast(this, 0, new Intent(action), PendingIntent
+                .FLAG_UPDATE_CURRENT);
+        registerReceiver(new AlarmReceiver(), new IntentFilter(action));
         HandlerThread handlerThread = new HandlerThread(getClass().getName() + "[TaskHandler]");
         handlerThread.start();
-        mHandler = new Handler(handlerThread.getLooper()) {
-            @Override
-            public void handleMessage(Message msg) {
-                super.handleMessage(msg);
-                handleEvent(msg);
-            }
-        };
+        mHandler = new Handler(handlerThread.getLooper());
     }
 
     @Override
@@ -84,8 +171,8 @@ public class MqttService extends Service implements MqttCallbackExtended {
             mServerURI = intent.getStringExtra("serverURI");
             mClientId = intent.getStringExtra("clientId");
             ConnectOptions options = intent.getParcelableExtra("connectOptions");
-            setMqttConnectOptions(options);
             mSubscribtionTopics = intent.getStringArrayExtra("subscribtionTopics");
+            setMqttConnectOptions(options);
             checkOnStartCommand();
         }
         return super.onStartCommand(intent, flags, startId);
@@ -94,7 +181,7 @@ public class MqttService extends Service implements MqttCallbackExtended {
     @Nullable
     @Override
     public IBinder onBind(Intent intent) {
-        return null;
+        return iClient;
     }
 
     @Override
@@ -119,12 +206,24 @@ public class MqttService extends Service implements MqttCallbackExtended {
         mHandler.post(new Runnable() {
             @Override
             public void run() {
-                removeMessage(HANDLER_MESSAGE_CONNECT);
-                removeMessage(HANDLER_MESSAGE_SUBSCRIBE);
+                stopKeepAlive();
                 disconnect();
-                mHandler.sendEmptyMessage(HANDLER_MESSAGE_CONNECT);
+                connect();
             }
         });
+    }
+
+    private void reconnect() {
+        mHandler.post(new Runnable() {
+            @Override
+            public void run() {
+
+            }
+        });
+    }
+
+    boolean isConnected() {
+        return mMqttClient == null ? false : mMqttClient.isConnected();
     }
 
     void disconnect() {
@@ -139,13 +238,20 @@ public class MqttService extends Service implements MqttCallbackExtended {
         }
     }
 
-    void connect() throws MqttException {
-        if (mMqttClient == null) {
-            mMqttClient = new MqttAsyncClient(mServerURI, mClientId, null);
+    void connect() {
+        try {
+            if (mMqttClient == null) {
+                mMqttClient = new MqttAsyncClient(mServerURI, mClientId, null);
+            }
+            mMqttClient.setCallback(this);
+            IMqttToken token = mMqttClient.connect(mMqttConnectOptions);
+            token.waitForCompletion();
+        } catch (MqttException e) {
+            e.printStackTrace();
         }
-        mMqttClient.setCallback(this);
-        IMqttToken token = mMqttClient.connect(mMqttConnectOptions);
-        token.waitForCompletion();
+        if (!mMqttClient.isConnected()) {
+            startKeepAlive(mDelayInMilliseconds);
+        }
     }
 
     void subscribe() throws MqttException {
@@ -157,62 +263,59 @@ public class MqttService extends Service implements MqttCallbackExtended {
                 new IMqttActionListener() {
                     @Override
                     public void onSuccess(IMqttToken asyncActionToken) {
-                        System.out.println(getClass().getSimpleName() + " mqtt subscribe " +
-                                "onSuccess");
+                        Log.d(TAG, "onSuccess: subscribe");
                     }
 
                     @Override
                     public void onFailure(IMqttToken asyncActionToken, Throwable exception) {
-                        System.out.println(getClass().getSimpleName() + " mqtt subscribe " +
-                                "onFailure");
+                        Log.d(TAG, "onFailure: subscribe");
                     }
                 });
         token.waitForCompletion();
     }
 
-    void handleEvent(Message msg) {
-        switch (msg.what) {
-            case HANDLER_MESSAGE_CONNECT:
-                try {
-                    connect();
-                } catch (MqttException e) {
-                    e.printStackTrace();
-                }
-                break;
-            case HANDLER_MESSAGE_SUBSCRIBE:
-                try {
-                    subscribe();
-                } catch (MqttException e) {
-                    e.printStackTrace();
-                }
-                break;
-            default:
-                break;
-        }
-    }
-
-    void removeMessage(int what) {
-        if (mHandler.hasMessages(what)) {
-            mHandler.removeMessages(what);
-        }
-    }
-
     @Override
     public void connectComplete(boolean reconnect, String serverURI) {
-        System.out.println(getClass().getSimpleName() + " mqtt connectComplete " + reconnect);
+        Log.d(TAG, "connectComplete: " + reconnect);
         if (mSubscribtionTopics != null) {
-            mHandler.sendEmptyMessage(HANDLER_MESSAGE_SUBSCRIBE);
+            mHandler.post(new Runnable() {
+                @Override
+                public void run() {
+                    try {
+                        subscribe();
+                    } catch (MqttException e) {
+                        e.printStackTrace();
+                    }
+                }
+            });
         }
     }
 
     @Override
     public void connectionLost(Throwable cause) {
-        System.out.println(getClass().getSimpleName() + " mqtt connectionLost");
+        Log.d(TAG, "connectionLost: " + cause.getMessage());
+        if (!mMqttConnectOptions.isAutomaticReconnect()) {
+            mDelayInMilliseconds = ALARM_DELAYINMILLISECONDS;
+            startKeepAlive(mDelayInMilliseconds);
+        }
     }
 
     @Override
     public void messageArrived(String topic, MqttMessage message) throws Exception {
-        System.out.println(getClass().getSimpleName() + " mqtt messageArrived " + message);
+        Log.d(TAG, "messageArrived: " + topic + " , " + message.getId());
+        if (mIClientListenerList != null) {
+            int count = mIClientListenerList.beginBroadcast();
+            for (int i = 0; i < count; i++) {
+                try {
+                    mIClientListenerList.getBroadcastItem(i)
+                            .messageArrived(topic, message.getId(), message.getQos(), message
+                                    .toString());
+                } catch (RemoteException e) {
+                    e.printStackTrace();
+                }
+            }
+            mIClientListenerList.finishBroadcast();
+        }
     }
 
     @Override
