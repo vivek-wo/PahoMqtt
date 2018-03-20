@@ -43,17 +43,19 @@ public class MqttService extends Service implements MqttCallbackExtended {
 
     private NetworkConnectionIntentReceiver mNetworkConnectionIntentReceiver;
     private AlarmManager mAlarmManager;
+    private AlarmReceiver mAlarmReceiver;
     private PendingIntent mPendingIntent;
     private ConnectivityManager mConnectivityManager;
 
     private String mServerURI;
     private String mClientId;
     private MqttAsyncClient mMqttClient;
-    private MqttConnectOptions mMqttConnectOptions;
+    private MqttConnectOptions mOpts;
     private String[] mSubscribtionTopics;
     private Handler mHandler;
 
     private long mDelayInMilliseconds = ALARM_DELAYINMILLISECONDS;
+    private boolean mIsExcuteInited = false;
 
     private IClient.Stub iClient = new IClient.Stub() {
 
@@ -85,7 +87,9 @@ public class MqttService extends Service implements MqttCallbackExtended {
             mHandler.post(new Runnable() {
                 @Override
                 public void run() {
-                    if (mMqttClient == null || !mMqttClient.isConnected()) {
+                    boolean isConnected = isConnected();
+                    Log.d(TAG, "run: AlarmReceiver " + isConnected);
+                    if (!isConnected) {
                         connect();
                     }
                 }
@@ -96,7 +100,21 @@ public class MqttService extends Service implements MqttCallbackExtended {
     private class NetworkConnectionIntentReceiver extends BroadcastReceiver {
         @Override
         public void onReceive(Context context, Intent intent) {
-            Log.d(TAG, "onReceive: " + intent.getAction());
+            Log.d(TAG, "onReceive: IsExcuteInited " + mIsExcuteInited + "," + intent.getAction());
+            if (!mIsExcuteInited || !isNetworkConnected()) {
+                return;
+            }
+            mHandler.post(new Runnable() {
+                @Override
+                public void run() {
+                    boolean isConnected = isConnected();
+                    Log.d(TAG, "run: NetworkConnectionIntentReceiver " + isConnected);
+                    if (!isConnected) {
+                        stopKeepAlive();
+                        connect();
+                    }
+                }
+            });
         }
     }
 
@@ -127,18 +145,18 @@ public class MqttService extends Service implements MqttCallbackExtended {
     private void startKeepAlive(long delayInMilliseconds) {
         long nextAlarmInMilliseconds = System.currentTimeMillis()
                 + delayInMilliseconds;
-        Log.d(TAG, "Schedule next alarm at " + nextAlarmInMilliseconds);
+        Log.d(TAG, "schedule next alarm at " + nextAlarmInMilliseconds);
         if (Build.VERSION.SDK_INT >= 23) {
             // In SDK 23 and above, dosing will prevent setExact, setExactAndAllowWhileIdle will
             // force
             // the device to run this task whilst dosing.
-            Log.d(TAG, "Alarm scheule using setExactAndAllowWhileIdle, next: " +
+            Log.d(TAG, "alarm scheule using setExactAndAllowWhileIdle, next: " +
                     delayInMilliseconds);
             mAlarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP,
                     nextAlarmInMilliseconds,
                     mPendingIntent);
         } else if (Build.VERSION.SDK_INT >= 19) {
-            Log.d(TAG, "Alarm scheule using setExact, delay: " + delayInMilliseconds);
+            Log.d(TAG, "alarm scheule using setExact, delay: " + delayInMilliseconds);
             mAlarmManager.setExact(AlarmManager.RTC_WAKEUP, nextAlarmInMilliseconds,
                     mPendingIntent);
         } else {
@@ -159,10 +177,12 @@ public class MqttService extends Service implements MqttCallbackExtended {
         String action = getClass().getName() + ".reveicer.action.alarm";
         mPendingIntent = PendingIntent.getBroadcast(this, 0, new Intent(action), PendingIntent
                 .FLAG_UPDATE_CURRENT);
-        registerReceiver(new AlarmReceiver(), new IntentFilter(action));
+        mAlarmReceiver = new AlarmReceiver();
+        registerReceiver(mAlarmReceiver, new IntentFilter(action));
         HandlerThread handlerThread = new HandlerThread(getClass().getName() + "[TaskHandler]");
         handlerThread.start();
         mHandler = new Handler(handlerThread.getLooper());
+        registerReceiver();
     }
 
     @Override
@@ -187,18 +207,20 @@ public class MqttService extends Service implements MqttCallbackExtended {
     @Override
     public void onDestroy() {
         super.onDestroy();
+        unregisterReceiver(mAlarmReceiver);
+        unregisterReceiver();
     }
 
     private void setMqttConnectOptions(ConnectOptions options) {
-        mMqttConnectOptions = new MqttConnectOptions();
-        mMqttConnectOptions.setCleanSession(options.isCleanSession());
-        mMqttConnectOptions.setAutomaticReconnect(options.isAutomaticReconnect());
-        mMqttConnectOptions.setKeepAliveInterval(options.getKeepAliveInterval());
-        mMqttConnectOptions.setConnectionTimeout(options.getConnectionTimeout());
-        mMqttConnectOptions.setMaxInflight(options.getMaxInflight());
+        mOpts = new MqttConnectOptions();
+        mOpts.setCleanSession(options.isCleanSession());
+        mOpts.setAutomaticReconnect(options.isAutomaticReconnect());
+        mOpts.setKeepAliveInterval(options.getKeepAliveInterval());
+        mOpts.setConnectionTimeout(options.getConnectionTimeout());
+        mOpts.setMaxInflight(options.getMaxInflight());
         if (options.getUserName() != null && !options.getUserName().trim().equals("")) {
-            mMqttConnectOptions.setUserName(options.getUserName());
-            mMqttConnectOptions.setPassword(options.getPassword().toCharArray());
+            mOpts.setUserName(options.getUserName());
+            mOpts.setPassword(options.getPassword().toCharArray());
         }
     }
 
@@ -209,15 +231,6 @@ public class MqttService extends Service implements MqttCallbackExtended {
                 stopKeepAlive();
                 disconnect();
                 connect();
-            }
-        });
-    }
-
-    private void reconnect() {
-        mHandler.post(new Runnable() {
-            @Override
-            public void run() {
-
             }
         });
     }
@@ -239,19 +252,26 @@ public class MqttService extends Service implements MqttCallbackExtended {
     }
 
     void connect() {
-        try {
-            if (mMqttClient == null) {
-                mMqttClient = new MqttAsyncClient(mServerURI, mClientId, null);
+        if (isNetworkConnected()) {
+            try {
+                if (mMqttClient == null) {
+                    mMqttClient = new MqttAsyncClient(mServerURI, mClientId, null);
+                }
+                mMqttClient.setCallback(this);
+                if (mOpts != null) {
+                    IMqttToken token = mMqttClient.connect(mOpts);
+                    token.waitForCompletion();
+                }
+            } catch (MqttException e) {
+                e.printStackTrace();
+            } catch (IllegalArgumentException ex) {
+                ex.printStackTrace();
             }
-            mMqttClient.setCallback(this);
-            IMqttToken token = mMqttClient.connect(mMqttConnectOptions);
-            token.waitForCompletion();
-        } catch (MqttException e) {
-            e.printStackTrace();
         }
-        if (!mMqttClient.isConnected()) {
+        if (!isConnected()) {
             startKeepAlive(mDelayInMilliseconds);
         }
+        mIsExcuteInited = true;
     }
 
     void subscribe() throws MqttException {
@@ -294,7 +314,7 @@ public class MqttService extends Service implements MqttCallbackExtended {
     @Override
     public void connectionLost(Throwable cause) {
         Log.d(TAG, "connectionLost: " + cause.getMessage());
-        if (!mMqttConnectOptions.isAutomaticReconnect()) {
+        if (!mOpts.isAutomaticReconnect()) {
             mDelayInMilliseconds = ALARM_DELAYINMILLISECONDS;
             startKeepAlive(mDelayInMilliseconds);
         }
