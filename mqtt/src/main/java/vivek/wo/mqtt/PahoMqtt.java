@@ -14,37 +14,22 @@ import android.util.Log;
 
 public class PahoMqtt {
     private static final String TAG = "PahoMqtt";
-    private final String serverURI;
-    private final String clientId;
-    private final ConnectOptions connectOptions;
-    private final String[] subscribtionTopics;
 
-    PahoMqtt(final Builder builder) {
-        this.serverURI = builder.serverURI;
-        this.clientId = builder.clientId;
-        this.connectOptions = new ConnectOptions(builder.cleanSession, builder.automaticReconnect,
-                builder.keepAliveInterval, builder.connectionTimeout, builder.maxInflight,
-                builder.userName, builder.password);
-        this.subscribtionTopics = builder.subscribtionTopics;
+    PahoMqtt() {
     }
 
     private IClient iClient;
 
     public void setup(Context context) {
         Intent intent = new Intent(context, MqttService.class);
-        intent.setAction("vivek.wo.mqtt.MqttService.action.setup");
-        intent.putExtra("serverURI", this.serverURI);
-        intent.putExtra("clientId", this.clientId);
-        intent.putExtra("connectOptions", this.connectOptions);
-        intent.putExtra("subscribtionTopics", this.subscribtionTopics);
         context.startService(intent);
         context.bindService(intent, new ServiceConnection() {
             @Override
             public void onServiceConnected(ComponentName name, IBinder service) {
-                Log.d(TAG, "onServiceConnected: ");
+                Log.d(TAG, "onServiceConnected");
                 iClient = IClient.Stub.asInterface(service);
                 try {
-                    iClient.addIClientListener(iClientListener);
+                    iClient.asBinder().linkToDeath(mBinderDeathRecipient, 0);
                 } catch (RemoteException e) {
                     e.printStackTrace();
                 }
@@ -52,86 +37,55 @@ public class PahoMqtt {
 
             @Override
             public void onServiceDisconnected(ComponentName name) {
-                Log.d(TAG, "onServiceDisconnected: ");
-                try {
-                    iClient.removeIClientListener(iClientListener);
-                } catch (RemoteException e) {
-                    e.printStackTrace();
-                }
-                iClient = null;
+                Log.d(TAG, "onServiceDisconnected");
             }
         }, Context.BIND_AUTO_CREATE);
     }
 
-    private IClientListener iClientListener = new IClientListener.Stub() {
-
+    private IBinder.DeathRecipient mBinderDeathRecipient = new IBinder.DeathRecipient() {
         @Override
-        public void messageArrived(String topic, int messageId, int qos, String message) throws
-                RemoteException {
-            Log.d(TAG, "messageArrived: topic:" + topic + " ,messageId:" + messageId
-                    + " ,qos:" + qos + " ,message:" + message);
+        public void binderDied() {
+            Log.d(TAG, "onServiceDisconnected Death ");
+            iClient.asBinder().unlinkToDeath(mBinderDeathRecipient, 0);
+            iClient = null;
+            //重连操作
         }
     };
 
-    public static final class Builder {
-        private final String serverURI;
-        private final String clientId;
-        private boolean cleanSession = false;
-        private boolean automaticReconnect = true;
-        private int keepAliveInterval = 60;
-        private int connectionTimeout = 30;
-        private int maxInflight = Short.MAX_VALUE - 1;
-        private String userName;
-        private String password;
-        private String[] subscribtionTopics;
-
-        public Builder(String serverURI, String clientId) {
-            this.serverURI = serverURI;
-            this.clientId = clientId;
+    IClient getIClient() throws RemoteException {
+        if (iClient == null) {
+            throw new RemoteException("Binder Death!");
         }
-
-        public Builder setCleanSession(boolean cleanSession) {
-            this.cleanSession = cleanSession;
-            return this;
-        }
-
-        public Builder setAutomaticReconnect(boolean automaticReconnect) {
-            this.automaticReconnect = automaticReconnect;
-            return this;
-        }
-
-        public Builder setKeepAliveInterval(int keepAliveInterval) {
-            this.keepAliveInterval = keepAliveInterval;
-            return this;
-        }
-
-        public Builder setConnectionTimeout(int connectionTimeout) {
-            this.connectionTimeout = connectionTimeout;
-            return this;
-        }
-
-        public Builder setMaxInflight(int maxInflight) {
-            this.maxInflight = maxInflight;
-            return this;
-        }
-
-        public Builder setUserName(String userName) {
-            this.userName = userName;
-            return this;
-        }
-
-        public Builder setPassword(String password) {
-            this.password = password;
-            return this;
-        }
-
-        public Builder setSubscribtionTopics(String[] subscribtionTopics) {
-            this.subscribtionTopics = subscribtionTopics;
-            return this;
-        }
-
-        public PahoMqtt build() {
-            return new PahoMqtt(this);
-        }
+        return iClient;
     }
+
+    public void addIClientListener(String clientHandler, OnClientListener onClientListener) throws
+            RemoteException {
+        getIClient().addIClientListener(clientHandler, onClientListener);
+    }
+
+    public void removeIClientListener(String clientHandler, OnClientListener onClientListener)
+            throws RemoteException {
+        getIClient().removeIClientListener(clientHandler, onClientListener);
+    }
+
+    public void connect(String clientHandler, String serverURI, String clientId, ConnectOptions
+            options) throws RemoteException {
+        getIClient().connect(clientHandler, serverURI, clientId, options);
+    }
+
+    public void subscribe(String clientHandler, String topicFilter, int qos) throws
+            RemoteException {
+        getIClient().subscribe(clientHandler, topicFilter, qos);
+    }
+
+    public void subscribe(String clientHandler, String[] topicFilters, int[] qos) throws
+            RemoteException {
+        getIClient().subscribe(clientHandler, topicFilters, qos);
+    }
+
+    public void disconnect(String clientHandler) throws RemoteException {
+        getIClient().disconnect(clientHandler);
+    }
+
 }

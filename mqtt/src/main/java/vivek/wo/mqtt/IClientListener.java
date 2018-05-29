@@ -101,6 +101,6 @@ public interface IClientListener extends IInterface {
         static final int TRANSACTION_messageArrived = IBinder.FIRST_CALL_TRANSACTION + 0;
     }
 
-    public void messageArrived(String topic, int messageId, int qos, String message) throws
+    void messageArrived(String topic, int messageId, int qos, String message) throws
             RemoteException;
 }
