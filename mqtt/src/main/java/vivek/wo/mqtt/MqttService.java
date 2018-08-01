@@ -18,6 +18,8 @@ import android.os.RemoteException;
 import android.support.annotation.Nullable;
 import android.util.Log;
 
+import org.eclipse.paho.client.mqttv3.MqttMessage;
+
 import java.util.HashMap;
 import java.util.Map;
 
@@ -105,6 +107,23 @@ public class MqttService extends Service {
         @Override
         public void disconnect(String clientHandler) throws RemoteException {
             getClient(clientHandler).disconnect();
+        }
+
+        @Override
+        public void pusblish(String clientHandler, String topic, byte[] payload, int qos,
+                             boolean retained) throws RemoteException {
+            getClient(clientHandler).pusblish(topic, payload, qos, retained);
+        }
+
+        @Override
+        public void pusblish(String clientHandler, String topic, String message, int qos,
+                             boolean retained, int messageId) throws RemoteException {
+            MqttMessage mqttMessage = new MqttMessage();
+            mqttMessage.setPayload(message.getBytes());
+            mqttMessage.setQos(qos);
+            mqttMessage.setRetained(retained);
+            mqttMessage.setId(messageId);
+            getClient(clientHandler).pusblish(topic, mqttMessage);
         }
     };
 
