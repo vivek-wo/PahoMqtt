@@ -156,6 +156,10 @@ public class Client implements MqttCallbackExtended {
 
     void subscribe(String[] subscribtionTopics) {
         subscribeTopic(subscribtionTopics);
+        subscribe();
+    }
+
+    private void subscribe() {
         if (isConnected()) {
             int[] qos = new int[mSubscribtionTopics.length];
             for (int i = 0; i < mSubscribtionTopics.length; i++) {
@@ -206,7 +210,7 @@ public class Client implements MqttCallbackExtended {
     @Override
     public void connectComplete(boolean reconnect, String serverURI) {
         Log.d(TAG, "connectComplete: " + reconnect);
-        if (mSubscribtionTopics != null) {
+        if (reconnect && mSubscribtionTopics != null) {
             subscribe(mSubscribtionTopics);
         }
     }

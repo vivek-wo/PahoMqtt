@@ -1,9 +1,8 @@
 package vivek.wo.mqtt.sample
 
-import android.support.v7.app.AppCompatActivity
 import android.os.Bundle
+import android.support.v7.app.AppCompatActivity
 import vivek.wo.mqtt.PahoMqtt
-import java.util.*
 
 class MainActivity : AppCompatActivity() {
 
@@ -15,6 +14,12 @@ class MainActivity : AppCompatActivity() {
 //                .setAutomaticReconnect(false)
 //                .build()
 //                .setup(this);
+        var pahoMqtt = PahoMqtt()
+        Thread(Runnable {
+            pahoMqtt.setup(applicationContext)
+        }).start()
+
+
 
     }
 }

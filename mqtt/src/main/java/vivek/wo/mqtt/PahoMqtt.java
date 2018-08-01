@@ -5,8 +5,12 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.ServiceConnection;
 import android.os.IBinder;
+import android.os.Looper;
+import android.os.NetworkOnMainThreadException;
 import android.os.RemoteException;
 import android.util.Log;
+
+import java.util.concurrent.CountDownLatch;
 
 /**
  * Created by VIVEK-WO on 2018/3/12.
@@ -15,33 +19,8 @@ import android.util.Log;
 public class PahoMqtt {
     private static final String TAG = "PahoMqtt";
 
-    PahoMqtt() {
-    }
-
-    private IClient iClient;
-
-    public void setup(Context context) {
-        Intent intent = new Intent(context, MqttService.class);
-        context.startService(intent);
-        context.bindService(intent, new ServiceConnection() {
-            @Override
-            public void onServiceConnected(ComponentName name, IBinder service) {
-                Log.d(TAG, "onServiceConnected");
-                iClient = IClient.Stub.asInterface(service);
-                try {
-                    iClient.asBinder().linkToDeath(mBinderDeathRecipient, 0);
-                } catch (RemoteException e) {
-                    e.printStackTrace();
-                }
-            }
-
-            @Override
-            public void onServiceDisconnected(ComponentName name) {
-                Log.d(TAG, "onServiceDisconnected");
-            }
-        }, Context.BIND_AUTO_CREATE);
-    }
-
+    Context context;
+    CountDownLatch countDownLatch;
     private IBinder.DeathRecipient mBinderDeathRecipient = new IBinder.DeathRecipient() {
         @Override
         public void binderDied() {
@@ -49,8 +28,54 @@ public class PahoMqtt {
             iClient.asBinder().unlinkToDeath(mBinderDeathRecipient, 0);
             iClient = null;
             //重连操作
+            setup(context);
+            Log.d(TAG, "onServiceDisconnected Death setup finish ");
         }
     };
+
+    private IClient iClient;
+    private ServiceConnection serviceConnection = new ServiceConnection() {
+        @Override
+        public void onServiceConnected(ComponentName name, IBinder service) {
+            Log.d(TAG, "onServiceConnected ");
+            iClient = IClient.Stub.asInterface(service);
+            try {
+                iClient.asBinder().linkToDeath(mBinderDeathRecipient, 0);
+            } catch (RemoteException e) {
+                e.printStackTrace();
+            }
+            if (countDownLatch != null) {
+                countDownLatch.countDown();
+            }
+        }
+
+        @Override
+        public void onServiceDisconnected(ComponentName name) {
+            Log.d(TAG, "onServiceDisconnected ");
+        }
+    };
+
+    public PahoMqtt() {
+    }
+
+    public void setup(Context context) {
+        if (Thread.currentThread() == Looper.getMainLooper().getThread()) {
+            throw new NetworkOnMainThreadException();
+        }
+        this.context = context;
+        Intent intent = new Intent(context, MqttService.class);
+        context.startService(intent);
+        context.bindService(intent, serviceConnection, Context.BIND_AUTO_CREATE);
+        if (countDownLatch == null) {
+            countDownLatch = new CountDownLatch(1);
+        }
+        try {
+            countDownLatch.await();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+        countDownLatch = null;
+    }
 
     IClient getIClient() throws RemoteException {
         if (iClient == null) {
