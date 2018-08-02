@@ -28,7 +28,7 @@ import java.util.Map;
  */
 
 public class MqttService extends Service {
-    private static final String TAG = MqttService.class.getSimpleName();
+    static final String TAG = "MqttService";
 
     private static final int ALARM_DELAYINMILLISECONDS = 5 * 1000;
     private static final int ALARM_MAX_DELAYINMILLISECONDS = 2 * 60 * 1000;
