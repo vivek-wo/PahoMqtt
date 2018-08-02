@@ -13,12 +13,14 @@ import org.eclipse.paho.client.mqttv3.MqttConnectOptions;
 import org.eclipse.paho.client.mqttv3.MqttException;
 import org.eclipse.paho.client.mqttv3.MqttMessage;
 
+import javax.net.ssl.SSLSocketFactory;
+
 /**
  * Created by VIVEK-WO on 2018/5/21.
  */
 
 public class Client implements MqttCallbackExtended {
-    private static final String TAG = Client.class.getSimpleName();
+    private static final String TAG = "Client";
     private static final int DISCONNECT_QUIESCE_TIMEOUT = 0;//强制断开连接时间
 
     private RemoteCallbackList<IClientListener> mIClientListenerList = new RemoteCallbackList<>();
@@ -29,8 +31,11 @@ public class Client implements MqttCallbackExtended {
     private MqttAsyncClient mMqttClient;
     private MqttConnectOptions mOpts;
     private String[] mSubscribtionTopics;
+    private SSLSocketFactory mSSLSocketFactory;
 
     private boolean mIsExcuteInited = false;// 是否执行过connect初始化
+
+    private Object object = new Object();
 
     Client(String clientHandler) {
         mClientHandler = clientHandler;
@@ -55,6 +60,10 @@ public class Client implements MqttCallbackExtended {
         return mIsExcuteInited;
     }
 
+    void setSSLSocketFactory(SSLSocketFactory sslSocketFactory) {
+        mSSLSocketFactory = sslSocketFactory;
+    }
+
     void addIClientListener(IClientListener iClientListener) throws RemoteException {
         mIClientListenerList.register(iClientListener);
     }
@@ -70,6 +79,9 @@ public class Client implements MqttCallbackExtended {
         mOpts.setKeepAliveInterval(options.getKeepAliveInterval());
         mOpts.setConnectionTimeout(options.getConnectionTimeout());
         mOpts.setMaxInflight(options.getMaxInflight());
+        if (mSSLSocketFactory != null) {
+            mOpts.setSocketFactory(mSSLSocketFactory);
+        }
         if (options.getUserName() != null && !options.getUserName().trim().equals("")) {
             mOpts.setUserName(options.getUserName());
             mOpts.setPassword(options.getPassword().toCharArray());
@@ -133,7 +145,7 @@ public class Client implements MqttCallbackExtended {
         subscribeTopic(new String[]{subscribtionTopic});
         if (isConnected()) {
             try {
-                IMqttToken token = mMqttClient.subscribe(subscribtionTopic, qos, null,
+                IMqttToken token = mMqttClient.subscribe(subscribtionTopic, qos, object,
                         new IMqttActionListener() {
                             @Override
                             public void onSuccess(IMqttToken asyncActionToken) {
@@ -166,7 +178,7 @@ public class Client implements MqttCallbackExtended {
                 qos[i] = 2;
             }
             try {
-                IMqttToken token = mMqttClient.subscribe(mSubscribtionTopics, qos, null,
+                IMqttToken token = mMqttClient.subscribe(mSubscribtionTopics, qos, object,
                         new IMqttActionListener() {
                             @Override
                             public void onSuccess(IMqttToken asyncActionToken) {
@@ -211,12 +223,13 @@ public class Client implements MqttCallbackExtended {
     public void connectComplete(boolean reconnect, String serverURI) {
         Log.d(TAG, "connectComplete: " + reconnect);
         if (reconnect && mSubscribtionTopics != null) {
-            subscribe(mSubscribtionTopics);
+            subscribe();
         }
     }
 
     @Override
     public void connectionLost(Throwable cause) {
+        cause.printStackTrace();
         Log.d(TAG, "connectionLost: " + cause.getMessage());
     }
 

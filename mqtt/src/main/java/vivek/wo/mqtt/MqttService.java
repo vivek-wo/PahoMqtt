@@ -75,19 +75,27 @@ public class MqttService extends Service {
         @Override
         public void addIClientListener(String clientHandler, IClientListener iClientListener)
                 throws RemoteException {
-            getClient(clientHandler).addIClientListener(iClientListener);
+            getOrCreate(clientHandler).addIClientListener(iClientListener);
         }
 
         @Override
         public void removeIClientListener(String clientHandler, IClientListener iClientListener)
                 throws RemoteException {
-            getClient(clientHandler).removeIClientListener(iClientListener);
+            getOrCreate(clientHandler).removeIClientListener(iClientListener);
         }
 
         @Override
         public void connect(String clientHandler, String serverURI, String clientId,
                             ConnectOptions options) throws RemoteException {
             Client client = getOrCreate(clientHandler);
+            if (serverURI.startsWith("ssl://")) {
+                if (options.getAssetCrtName() == null || options.getAssetCrtName().length() == 0) {
+                    client.setSSLSocketFactory(new ClientSSLSocketFactory().create());
+                } else {
+                    client.setSSLSocketFactory(new ClientSSLSocketFactory(getApplicationContext(),
+                            options.getAssetCrtName()).create());
+                }
+            }
             client.resetClient(serverURI, clientId);
             client.connect(options);
         }

@@ -8,24 +8,39 @@ import android.os.Parcelable;
  */
 
 public class ConnectOptions implements Parcelable {
-    private final boolean cleanSession;
-    private final boolean automaticReconnect;
-    private final int keepAliveInterval;
-    private final int connectionTimeout;
-    private final int maxInflight;
-    private final String userName;
-    private final String password;
+    /**
+     * The default keep alive interval in seconds if one is not specified
+     */
+    public static final int KEEP_ALIVE_INTERVAL_DEFAULT = 60;
+    /**
+     * The default connection timeout in seconds if one is not specified
+     */
+    public static final int CONNECTION_TIMEOUT_DEFAULT = 30;
+    /**
+     * The default max inflight if one is not specified
+     */
+    public static final int MAX_INFLIGHT_DEFAULT = 10;
+    /**
+     * The default clean session setting if one is not specified
+     */
+    public static final boolean CLEAN_SESSION_DEFAULT = false;
 
-    public ConnectOptions(boolean cleanSession, boolean automaticReconnect, int
-            keepAliveInterval, int connectionTimeout, int maxInflight, String userName, String
-                                  password) {
-        this.cleanSession = cleanSession;
-        this.automaticReconnect = automaticReconnect;
-        this.keepAliveInterval = keepAliveInterval;
-        this.connectionTimeout = connectionTimeout;
-        this.maxInflight = maxInflight;
+    private boolean cleanSession = CLEAN_SESSION_DEFAULT;
+    private boolean automaticReconnect = true;
+    private int keepAliveInterval = KEEP_ALIVE_INTERVAL_DEFAULT;
+    private int connectionTimeout = CONNECTION_TIMEOUT_DEFAULT;
+    private int maxInflight = MAX_INFLIGHT_DEFAULT;
+    private String userName;
+    private String password;
+    private String assetCrtName;
+
+    public ConnectOptions(String userName, String password) {
         this.userName = userName;
         this.password = password;
+    }
+
+    public ConnectOptions() {
+
     }
 
     protected ConnectOptions(Parcel in) {
@@ -36,6 +51,7 @@ public class ConnectOptions implements Parcelable {
         maxInflight = in.readInt();
         userName = in.readString();
         password = in.readString();
+        assetCrtName = in.readString();
     }
 
     public static final Creator<ConnectOptions> CREATOR = new Creator<ConnectOptions>() {
@@ -64,6 +80,7 @@ public class ConnectOptions implements Parcelable {
         dest.writeInt(maxInflight);
         dest.writeString(userName);
         dest.writeString(password);
+        dest.writeString(assetCrtName);
     }
 
     public boolean isCleanSession() {
@@ -92,5 +109,41 @@ public class ConnectOptions implements Parcelable {
 
     public String getPassword() {
         return password;
+    }
+
+    public String getAssetCrtName() {
+        return assetCrtName;
+    }
+
+    public void setAssetCrtName(String assetCrtName) {
+        this.assetCrtName = assetCrtName;
+    }
+
+    public void setCleanSession(boolean cleanSession) {
+        this.cleanSession = cleanSession;
+    }
+
+    public void setAutomaticReconnect(boolean automaticReconnect) {
+        this.automaticReconnect = automaticReconnect;
+    }
+
+    public void setKeepAliveInterval(int keepAliveInterval) {
+        this.keepAliveInterval = keepAliveInterval;
+    }
+
+    public void setConnectionTimeout(int connectionTimeout) {
+        this.connectionTimeout = connectionTimeout;
+    }
+
+    public void setMaxInflight(int maxInflight) {
+        this.maxInflight = maxInflight;
+    }
+
+    public void setUserName(String userName) {
+        this.userName = userName;
+    }
+
+    public void setPassword(String password) {
+        this.password = password;
     }
 }
