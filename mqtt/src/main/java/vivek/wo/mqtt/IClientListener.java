@@ -12,6 +12,13 @@ import android.os.RemoteException;
 
 public interface IClientListener extends IInterface {
 
+    void connectComplete(boolean reconnect, String serverURI) throws RemoteException;
+
+    void messageArrived(String topic, int messageId, int qos, String message) throws
+            RemoteException;
+
+    void connectLost(String detailMessage) throws RemoteException;
+
     public static abstract class Stub extends Binder implements IClientListener {
         public static final String DESCRIPTOR = "vivek.wo.mqtt.IClientListener";
 
@@ -35,6 +42,11 @@ public interface IClientListener extends IInterface {
             return this;
         }
 
+        static final int TRANSACTION_connectComplete = IBinder.FIRST_CALL_TRANSACTION + 1;
+        static final int TRANSACTION_connectLost = IBinder.FIRST_CALL_TRANSACTION + 2;
+
+        static final int TRANSACTION_messageArrived = IBinder.FIRST_CALL_TRANSACTION + 0;
+
         @Override
         protected boolean onTransact(int code, Parcel data, Parcel reply, int flags) throws
                 RemoteException {
@@ -54,6 +66,24 @@ public interface IClientListener extends IInterface {
                     String _arg3;
                     _arg3 = data.readString();
                     this.messageArrived(_arg0, _arg1, _arg2, _arg3);
+                    reply.writeNoException();
+                    return true;
+                }
+                case TRANSACTION_connectComplete: {
+                    data.enforceInterface(DESCRIPTOR);
+                    boolean _arg0;
+                    _arg0 = data.readInt() == 1;
+                    String _arg1;
+                    _arg1 = data.readString();
+                    this.connectComplete(_arg0, _arg1);
+                    reply.writeNoException();
+                    return true;
+                }
+                case TRANSACTION_connectLost: {
+                    data.enforceInterface(DESCRIPTOR);
+                    String _arg0;
+                    _arg0 = data.readString();
+                    this.connectLost(_arg0);
                     reply.writeNoException();
                     return true;
                 }
@@ -89,7 +119,37 @@ public interface IClientListener extends IInterface {
                     _reply.recycle();
                     _data.recycle();
                 }
+            }
 
+            @Override
+            public void connectComplete(boolean reconnect, String serverURI) throws RemoteException {
+                Parcel _data = Parcel.obtain();
+                Parcel _reply = Parcel.obtain();
+                try {
+                    _data.writeInterfaceToken(DESCRIPTOR);
+                    _data.writeInt(reconnect ? 1 : 0);
+                    _data.writeString(serverURI);
+                    mRemote.transact(TRANSACTION_connectComplete, _data, _reply, 0);
+                    _reply.readException();
+                } finally {
+                    _reply.recycle();
+                    _data.recycle();
+                }
+            }
+
+            @Override
+            public void connectLost(String detailMessage) throws RemoteException {
+                Parcel _data = Parcel.obtain();
+                Parcel _reply = Parcel.obtain();
+                try {
+                    _data.writeInterfaceToken(DESCRIPTOR);
+                    _data.writeString(detailMessage);
+                    mRemote.transact(TRANSACTION_connectLost, _data, _reply, 0);
+                    _reply.readException();
+                } finally {
+                    _reply.recycle();
+                    _data.recycle();
+                }
             }
 
             @Override
@@ -97,10 +157,5 @@ public interface IClientListener extends IInterface {
                 return mRemote;
             }
         }
-
-        static final int TRANSACTION_messageArrived = IBinder.FIRST_CALL_TRANSACTION + 0;
     }
-
-    void messageArrived(String topic, int messageId, int qos, String message) throws
-            RemoteException;
 }

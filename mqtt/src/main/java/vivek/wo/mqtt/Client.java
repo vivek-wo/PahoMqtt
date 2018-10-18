@@ -222,6 +222,18 @@ public class Client implements MqttCallbackExtended {
     @Override
     public void connectComplete(boolean reconnect, String serverURI) {
         Log.d(TAG, "connectComplete: " + reconnect);
+        if (mIClientListenerList != null) {
+            int count = mIClientListenerList.beginBroadcast();
+            for (int i = 0; i < count; i++) {
+                try {
+                    mIClientListenerList.getBroadcastItem(i)
+                            .connectComplete(reconnect, serverURI);
+                } catch (RemoteException e) {
+                    e.printStackTrace();
+                }
+            }
+            mIClientListenerList.finishBroadcast();
+        }
         if (reconnect && mSubscribtionTopics != null) {
             subscribe();
         }
@@ -231,6 +243,18 @@ public class Client implements MqttCallbackExtended {
     public void connectionLost(Throwable cause) {
         cause.printStackTrace();
         Log.d(TAG, "connectionLost: " + cause.getMessage());
+        if (mIClientListenerList != null) {
+            int count = mIClientListenerList.beginBroadcast();
+            for (int i = 0; i < count; i++) {
+                try {
+                    mIClientListenerList.getBroadcastItem(i)
+                            .connectLost(cause.getMessage());
+                } catch (RemoteException e) {
+                    e.printStackTrace();
+                }
+            }
+            mIClientListenerList.finishBroadcast();
+        }
     }
 
     @Override
