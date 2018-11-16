@@ -118,20 +118,20 @@ public class MqttService extends Service {
         }
 
         @Override
-        public void pusblish(String clientHandler, String topic, byte[] payload, int qos,
-                             boolean retained) throws RemoteException {
-            getClient(clientHandler).pusblish(topic, payload, qos, retained);
+        public void publish(String clientHandler, String topic, byte[] payload, int qos,
+                            boolean retained) throws RemoteException {
+            getClient(clientHandler).publish(topic, payload, qos, retained);
         }
 
         @Override
-        public void pusblish(String clientHandler, String topic, String message, int qos,
-                             boolean retained, int messageId) throws RemoteException {
+        public void publish(String clientHandler, String topic, String message, int qos,
+                            boolean retained, int messageId) throws RemoteException {
             MqttMessage mqttMessage = new MqttMessage();
             mqttMessage.setPayload(message.getBytes());
             mqttMessage.setQos(qos);
             mqttMessage.setRetained(retained);
             mqttMessage.setId(messageId);
-            getClient(clientHandler).pusblish(topic, mqttMessage);
+            getClient(clientHandler).publish(topic, mqttMessage);
         }
     };
 

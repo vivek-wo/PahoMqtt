@@ -21,8 +21,8 @@ public interface IClient extends IInterface {
     void removeIClientListener(String clientHandler, IClientListener iClientListener)
             throws RemoteException;
 
-    void pusblish(String clientHandler, String topic, byte[] payload, int qos,
-                  boolean retained) throws RemoteException;
+    void publish(String clientHandler, String topic, byte[] payload, int qos,
+                 boolean retained) throws RemoteException;
 
     void subscribe(String clientHandler, String topicFilter, int qos) throws
             RemoteException;
@@ -32,8 +32,8 @@ public interface IClient extends IInterface {
 
     void disconnect(String clientHandler) throws RemoteException;
 
-    void pusblish(String clientHandler, String topic, String message, int qos,
-                  boolean retained, int messageId) throws RemoteException;
+    void publish(String clientHandler, String topic, String message, int qos,
+                 boolean retained, int messageId) throws RemoteException;
 
     public static abstract class Stub extends Binder implements IClient {
         public static final String DESCRIPTOR = "vivek.wo.mqtt.IClient";
@@ -159,7 +159,7 @@ public interface IClient extends IInterface {
                     _arg3 = data.readInt();
                     boolean _arg4;
                     _arg4 = data.readInt() == 1;
-                    this.pusblish(_arg0, _arg1, _arg2, _arg3, _arg4);
+                    this.publish(_arg0, _arg1, _arg2, _arg3, _arg4);
                     reply.writeNoException();
                     return true;
                 }
@@ -177,7 +177,7 @@ public interface IClient extends IInterface {
                     _arg4 = data.readInt() == 1;
                     int _arg5;
                     _arg5 = data.readInt();
-                    this.pusblish(_arg0, _arg1, _arg2, _arg3, _arg4, _arg5);
+                    this.publish(_arg0, _arg1, _arg2, _arg3, _arg4, _arg5);
                     reply.writeNoException();
                     return true;
                 }
@@ -309,8 +309,8 @@ public interface IClient extends IInterface {
             }
 
             @Override
-            public void pusblish(String clientHandler, String topic, byte[] payload, int qos,
-                                 boolean retained) throws RemoteException {
+            public void publish(String clientHandler, String topic, byte[] payload, int qos,
+                                boolean retained) throws RemoteException {
                 android.os.Parcel _data = android.os.Parcel.obtain();
                 android.os.Parcel _reply = android.os.Parcel.obtain();
                 try {
@@ -329,8 +329,8 @@ public interface IClient extends IInterface {
             }
 
             @Override
-            public void pusblish(String clientHandler, String topic, String message, int qos,
-                                 boolean retained, int messageId) throws RemoteException {
+            public void publish(String clientHandler, String topic, String message, int qos,
+                                boolean retained, int messageId) throws RemoteException {
                 android.os.Parcel _data = android.os.Parcel.obtain();
                 android.os.Parcel _reply = android.os.Parcel.obtain();
                 try {

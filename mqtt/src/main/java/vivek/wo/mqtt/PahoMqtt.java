@@ -113,14 +113,14 @@ public class PahoMqtt {
         getIClient().disconnect(clientHandler);
     }
 
-    public void pusblish(String clientHandler, String topic, byte[] payload, int qos,
-                         boolean retained) throws RemoteException {
-        getIClient().pusblish(clientHandler, topic, payload, qos, retained);
+    public void publish(String clientHandler, String topic, byte[] payload, int qos,
+                        boolean retained) throws RemoteException {
+        getIClient().publish(clientHandler, topic, payload, qos, retained);
     }
 
-    public void pusblish(String clientHandler, String topic, String message, int qos,
-                         boolean retained, int messageId) throws RemoteException {
-        getIClient().pusblish(clientHandler, topic, message, qos, retained, messageId);
+    public void publish(String clientHandler, String topic, String message, int qos,
+                        boolean retained, int messageId) throws RemoteException {
+        getIClient().publish(clientHandler, topic, message, qos, retained, messageId);
     }
 
 }

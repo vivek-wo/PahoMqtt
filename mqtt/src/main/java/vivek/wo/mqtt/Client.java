@@ -199,7 +199,7 @@ public class Client implements MqttCallbackExtended {
         }
     }
 
-    void pusblish(String topic, byte[] payload, int qos, boolean retained) {
+    void publish(String topic, byte[] payload, int qos, boolean retained) {
         try {
             mMqttClient.publish(topic, payload, qos, retained);
         } catch (MqttException e) {
@@ -207,7 +207,7 @@ public class Client implements MqttCallbackExtended {
         }
     }
 
-    void pusblish(String topic, MqttMessage mqttMessage) {
+    void publish(String topic, MqttMessage mqttMessage) {
         try {
             mMqttClient.publish(topic, mqttMessage);
         } catch (MqttException e) {
