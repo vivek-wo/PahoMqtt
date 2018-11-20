@@ -114,7 +114,13 @@ public class MqttService extends Service {
 
         @Override
         public void disconnect(String clientHandler) throws RemoteException {
-            getClient(clientHandler).disconnect();
+            Client client = getClient(clientHandler);
+            if (client != null) {
+                client.disconnect();
+                //退出清除连接信息
+                mClientMap.remove(client);
+            }
+
         }
 
         @Override
