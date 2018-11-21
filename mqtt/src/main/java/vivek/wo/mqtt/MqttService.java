@@ -85,6 +85,12 @@ public class MqttService extends Service {
         }
 
         @Override
+        public boolean isConnected(String clientHandler) throws RemoteException {
+            Client client = mClientMap.get(clientHandler);
+            return client != null && client.isConnected();
+        }
+
+        @Override
         public void connect(String clientHandler, String serverURI, String clientId,
                             ConnectOptions options) throws RemoteException {
             Client client = getOrCreate(clientHandler);

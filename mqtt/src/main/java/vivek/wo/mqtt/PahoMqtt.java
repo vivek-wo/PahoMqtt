@@ -5,12 +5,8 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.ServiceConnection;
 import android.os.IBinder;
-import android.os.Looper;
-import android.os.NetworkOnMainThreadException;
 import android.os.RemoteException;
 import android.util.Log;
-
-import java.util.concurrent.CountDownLatch;
 
 /**
  * Created by VIVEK-WO on 2018/3/12.
@@ -18,22 +14,10 @@ import java.util.concurrent.CountDownLatch;
 
 public class PahoMqtt {
     private static final String TAG = "PahoMqtt";
-
-    Context context;
-    CountDownLatch countDownLatch;
-    private IBinder.DeathRecipient mBinderDeathRecipient = new IBinder.DeathRecipient() {
-        @Override
-        public void binderDied() {
-            Log.d(TAG, "onServiceDisconnected Death ");
-            iClient.asBinder().unlinkToDeath(mBinderDeathRecipient, 0);
-            iClient = null;
-            //重连操作
-            setup(context);
-            Log.d(TAG, "onServiceDisconnected Death setup finish ");
-        }
-    };
-
+    private Context mContext;
     private IClient iClient;
+    private boolean mIsReconnect = false;
+    private OnServiceConnectionListener mOnServiceConnectionListener;
     private ServiceConnection serviceConnection = new ServiceConnection() {
         @Override
         public void onServiceConnected(ComponentName name, IBinder service) {
@@ -44,8 +28,8 @@ public class PahoMqtt {
             } catch (RemoteException e) {
                 e.printStackTrace();
             }
-            if (countDownLatch != null) {
-                countDownLatch.countDown();
+            if (mOnServiceConnectionListener != null) {
+                mOnServiceConnectionListener.onServiceConnected(PahoMqtt.this, mIsReconnect);
             }
         }
 
@@ -54,34 +38,45 @@ public class PahoMqtt {
             Log.d(TAG, "onServiceDisconnected ");
         }
     };
+    private IBinder.DeathRecipient mBinderDeathRecipient = new IBinder.DeathRecipient() {
+        @Override
+        public void binderDied() {
+            Log.d(TAG, "onServiceDisconnected Death ");
+            iClient.asBinder().unlinkToDeath(mBinderDeathRecipient, 0);
+            iClient = null;
+            if (mOnServiceConnectionListener != null) {
+                mOnServiceConnectionListener.onServiceDisconnected();
+            }
+            mIsReconnect = true;
+            setup(mContext);
+        }
+    };
+
+    public PahoMqtt(OnServiceConnectionListener onServiceConnectionListener) {
+        mOnServiceConnectionListener = onServiceConnectionListener;
+    }
 
     public PahoMqtt() {
     }
 
     public void setup(Context context) {
-        if (Thread.currentThread() == Looper.getMainLooper().getThread()) {
-            throw new NetworkOnMainThreadException();
-        }
-        this.context = context;
+        mContext = context;
         Intent intent = new Intent(context, MqttService.class);
         context.startService(intent);
         context.bindService(intent, serviceConnection, Context.BIND_AUTO_CREATE);
-        if (countDownLatch == null) {
-            countDownLatch = new CountDownLatch(1);
-        }
-        try {
-            countDownLatch.await();
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
-        countDownLatch = null;
     }
 
-    IClient getIClient() throws RemoteException {
+    private IClient getIClient() throws RemoteException {
         if (iClient == null) {
             throw new RemoteException("Binder Death!");
         }
         return iClient;
+    }
+
+    public static interface OnServiceConnectionListener {
+        void onServiceConnected(PahoMqtt pahoMqtt, boolean isReconnect);
+
+        void onServiceDisconnected();
     }
 
     public void addIClientListener(String clientHandler, OnClientListener onClientListener) throws

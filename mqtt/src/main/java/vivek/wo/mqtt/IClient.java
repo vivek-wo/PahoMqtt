@@ -12,6 +12,8 @@ import android.os.RemoteException;
 
 public interface IClient extends IInterface {
 
+    boolean isConnected(String clientHandler) throws RemoteException;
+
     void connect(String clientHandler, String serverURI, String clientId,
                  ConnectOptions options) throws RemoteException;
 
@@ -69,6 +71,8 @@ public interface IClient extends IInterface {
         static final int TRANSACTION_subscribe2 = IBinder.FIRST_CALL_TRANSACTION + 4;
         static final int TRANSACTION_disconnect = IBinder.FIRST_CALL_TRANSACTION + 5;
 
+        static final int TRANSACTION_isConnected = IBinder.FIRST_CALL_TRANSACTION + 8;
+
         @Override
         protected boolean onTransact(int code, Parcel data, Parcel reply, int flags) throws
                 RemoteException {
@@ -95,6 +99,15 @@ public interface IClient extends IInterface {
                     _arg1 = IClientListener.Stub.asInterface(data.readStrongBinder());
                     this.removeIClientListener(_arg0, _arg1);
                     reply.writeNoException();
+                    return true;
+                }
+                case TRANSACTION_isConnected: {
+                    data.enforceInterface(DESCRIPTOR);
+                    java.lang.String _arg0;
+                    _arg0 = data.readString();
+                    boolean _result = this.isConnected(_arg0);
+                    reply.writeNoException();
+                    reply.writeInt(_result ? 1 : 0);
                     return true;
                 }
                 case TRANSACTION_connect: {
@@ -231,6 +244,24 @@ public interface IClient extends IInterface {
                     _reply.recycle();
                     _data.recycle();
                 }
+            }
+
+            @Override
+            public boolean isConnected(String clientHandler) throws RemoteException {
+                android.os.Parcel _data = android.os.Parcel.obtain();
+                android.os.Parcel _reply = android.os.Parcel.obtain();
+                boolean _result;
+                try {
+                    _data.writeInterfaceToken(DESCRIPTOR);
+                    _data.writeString(clientHandler);
+                    this.mRemote.transact(TRANSACTION_isConnected, _data, _reply, 0);
+                    _reply.readException();
+                    _result = 0 != _reply.readInt();
+                } finally {
+                    _reply.recycle();
+                    _data.recycle();
+                }
+                return _result;
             }
 
             @Override
