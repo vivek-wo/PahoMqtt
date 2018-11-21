@@ -52,6 +52,9 @@ public class PahoMqtt {
         }
     };
 
+    /**
+     * @param onServiceConnectionListener 服务连接监听器
+     */
     public PahoMqtt(OnServiceConnectionListener onServiceConnectionListener) {
         mOnServiceConnectionListener = onServiceConnectionListener;
     }
@@ -59,6 +62,11 @@ public class PahoMqtt {
     public PahoMqtt() {
     }
 
+    /**
+     * 启动服务
+     *
+     * @param context 上下文
+     */
     public void setup(Context context) {
         mContext = context;
         Intent intent = new Intent(context, MqttService.class);
@@ -79,40 +87,106 @@ public class PahoMqtt {
         void onServiceDisconnected();
     }
 
+    /**
+     * 添加消息监听
+     *
+     * @param clientHandler    客户端唯一标识
+     * @param onClientListener 消息监听器
+     * @throws RemoteException
+     */
     public void addIClientListener(String clientHandler, OnClientListener onClientListener) throws
             RemoteException {
         getIClient().addIClientListener(clientHandler, onClientListener);
     }
 
+    /**
+     * 移除消息监听
+     *
+     * @param clientHandler    客户端唯一标识
+     * @param onClientListener 消息监听器
+     * @throws RemoteException
+     */
     public void removeIClientListener(String clientHandler, OnClientListener onClientListener)
             throws RemoteException {
         getIClient().removeIClientListener(clientHandler, onClientListener);
     }
 
+    /**
+     * 连接
+     *
+     * @param clientHandler 客户端唯一标识
+     * @param serverURI     MQTT 服务地址
+     * @param clientId      MQTT ClientID 唯一标识
+     * @param options       MQTT 连接参数配置
+     * @throws RemoteException
+     */
     public void connect(String clientHandler, String serverURI, String clientId, ConnectOptions
             options) throws RemoteException {
         getIClient().connect(clientHandler, serverURI, clientId, options);
     }
 
+    /**
+     * 订阅
+     *
+     * @param clientHandler 客户端唯一标识
+     * @param topicFilter   订阅主题
+     * @param qos           主题消息QOS
+     * @throws RemoteException
+     */
     public void subscribe(String clientHandler, String topicFilter, int qos) throws
             RemoteException {
         getIClient().subscribe(clientHandler, topicFilter, qos);
     }
 
+    /**
+     * 订阅
+     *
+     * @param clientHandler 客户端唯一标识
+     * @param topicFilters  订阅主题
+     * @param qos           主题消息QOS
+     * @throws RemoteException
+     */
     public void subscribe(String clientHandler, String[] topicFilters, int[] qos) throws
             RemoteException {
         getIClient().subscribe(clientHandler, topicFilters, qos);
     }
 
+    /**
+     * 断开连接
+     *
+     * @param clientHandler 客户端唯一标识
+     * @throws RemoteException
+     */
     public void disconnect(String clientHandler) throws RemoteException {
         getIClient().disconnect(clientHandler);
     }
 
+    /**
+     * 发布
+     *
+     * @param clientHandler 客户端唯一标识
+     * @param topic
+     * @param payload
+     * @param qos
+     * @param retained
+     * @throws RemoteException
+     */
     public void publish(String clientHandler, String topic, byte[] payload, int qos,
                         boolean retained) throws RemoteException {
         getIClient().publish(clientHandler, topic, payload, qos, retained);
     }
 
+    /**
+     * 发布
+     *
+     * @param clientHandler 客户端唯一标识
+     * @param topic
+     * @param message
+     * @param qos
+     * @param retained
+     * @param messageId
+     * @throws RemoteException
+     */
     public void publish(String clientHandler, String topic, String message, int qos,
                         boolean retained, int messageId) throws RemoteException {
         getIClient().publish(clientHandler, topic, message, qos, retained, messageId);
