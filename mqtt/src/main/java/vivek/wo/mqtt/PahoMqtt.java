@@ -118,11 +118,12 @@ public class PahoMqtt {
      * @param serverURI     MQTT 服务地址
      * @param clientId      MQTT ClientID 唯一标识
      * @param options       MQTT 连接参数配置
+     * @param onActionListener
      * @throws RemoteException
      */
     public void connect(String clientHandler, String serverURI, String clientId, ConnectOptions
-            options) throws RemoteException {
-        getIClient().connect(clientHandler, serverURI, clientId, options);
+            options, OnActionListener onActionListener) throws RemoteException {
+        getIClient().connect(clientHandler, serverURI, clientId, options, onActionListener);
     }
 
     /**
@@ -131,11 +132,12 @@ public class PahoMqtt {
      * @param clientHandler 客户端唯一标识
      * @param topicFilter   订阅主题
      * @param qos           主题消息QOS
+     * @param onActionListener
      * @throws RemoteException
      */
-    public void subscribe(String clientHandler, String topicFilter, int qos) throws
-            RemoteException {
-        getIClient().subscribe(clientHandler, topicFilter, qos);
+    public void subscribe(String clientHandler, String topicFilter, int qos,
+                          OnActionListener onActionListener) throws RemoteException {
+        getIClient().subscribe(clientHandler, topicFilter, qos, onActionListener);
     }
 
     /**
@@ -144,11 +146,12 @@ public class PahoMqtt {
      * @param clientHandler 客户端唯一标识
      * @param topicFilters  订阅主题
      * @param qos           主题消息QOS
+     * @param onActionListener
      * @throws RemoteException
      */
-    public void subscribe(String clientHandler, String[] topicFilters, int[] qos) throws
-            RemoteException {
-        getIClient().subscribe(clientHandler, topicFilters, qos);
+    public void subscribe(String clientHandler, String[] topicFilters, int[] qos,
+                          OnActionListener onActionListener) throws RemoteException {
+        getIClient().subscribe(clientHandler, topicFilters, qos, onActionListener);
     }
 
     /**
@@ -169,11 +172,12 @@ public class PahoMqtt {
      * @param payload
      * @param qos
      * @param retained
+     * @param onActionListener
      * @throws RemoteException
      */
     public void publish(String clientHandler, String topic, byte[] payload, int qos,
-                        boolean retained) throws RemoteException {
-        getIClient().publish(clientHandler, topic, payload, qos, retained);
+                        boolean retained, OnActionListener onActionListener) throws RemoteException {
+        getIClient().publish(clientHandler, topic, payload, qos, retained, onActionListener);
     }
 
     /**
@@ -185,11 +189,12 @@ public class PahoMqtt {
      * @param qos
      * @param retained
      * @param messageId
+     * @param onActionListener
      * @throws RemoteException
      */
     public void publish(String clientHandler, String topic, String message, int qos,
-                        boolean retained, int messageId) throws RemoteException {
-        getIClient().publish(clientHandler, topic, message, qos, retained, messageId);
+                        boolean retained, int messageId, OnActionListener onActionListener) throws RemoteException {
+        getIClient().publish(clientHandler, topic, message, qos, retained, messageId, onActionListener);
     }
 
 }

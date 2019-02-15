@@ -49,10 +49,10 @@ public class MqttService extends Service {
         Client getClient(String clientHandler) throws RemoteException {
             Client client = mClientMap.get(clientHandler);
             if (client == null) {
-                throw new RemoteException("NO MQTT CLIENT!");
+                throw new RemoteException(clientHandler + " NO MQTT CLIENT!");
             }
             if (!client.isConnected()) {
-                throw new RemoteException("MQTT CLIENT NOT CONNECTED!");
+                throw new RemoteException(clientHandler + " MQTT CLIENT NOT CONNECTED!");
             }
             return client;
         }
@@ -92,7 +92,7 @@ public class MqttService extends Service {
 
         @Override
         public void connect(String clientHandler, String serverURI, String clientId,
-                            ConnectOptions options) throws RemoteException {
+                            ConnectOptions options, IActionListener iActionListener) throws RemoteException {
             Client client = getOrCreate(clientHandler);
             if (serverURI.startsWith("ssl://")) {
                 if (options.getAssetCrtName() == null || options.getAssetCrtName().length() == 0) {
@@ -103,47 +103,41 @@ public class MqttService extends Service {
                 }
             }
             client.resetClient(serverURI, clientId);
-            client.connect(options);
+            client.connect(options, iActionListener);
         }
 
         @Override
-        public void subscribe(String clientHandler, String topicFilter, int qos) throws
-                RemoteException {
-            getClient(clientHandler).subscribe(topicFilter, qos);
+        public void subscribe(String clientHandler, String topicFilter, int qos,
+                              IActionListener iActionListener) throws RemoteException {
+            getClient(clientHandler).subscribe(topicFilter, qos, iActionListener);
         }
 
         @Override
-        public void subscribe(String clientHandler, String[] topicFilters, int[] qos) throws
-                RemoteException {
-            getClient(clientHandler).subscribe(topicFilters);
+        public void subscribe(String clientHandler, String[] topicFilters, int[] qos,
+                              IActionListener iActionListener) throws RemoteException {
+            getClient(clientHandler).subscribe(topicFilters, iActionListener);
         }
 
         @Override
         public void disconnect(String clientHandler) throws RemoteException {
-            Client client = getClient(clientHandler);
-            if (client != null) {
-                client.disconnect();
-                //退出清除连接信息
-                mClientMap.remove(client);
-            }
-
+            getClient(clientHandler).disconnect();
         }
 
         @Override
         public void publish(String clientHandler, String topic, byte[] payload, int qos,
-                            boolean retained) throws RemoteException {
-            getClient(clientHandler).publish(topic, payload, qos, retained);
+                            boolean retained, IActionListener iActionListener) throws RemoteException {
+            getClient(clientHandler).publish(topic, payload, qos, retained, iActionListener);
         }
 
         @Override
         public void publish(String clientHandler, String topic, String message, int qos,
-                            boolean retained, int messageId) throws RemoteException {
+                            boolean retained, int messageId, IActionListener iActionListener) throws RemoteException {
             MqttMessage mqttMessage = new MqttMessage();
             mqttMessage.setPayload(message.getBytes());
             mqttMessage.setQos(qos);
             mqttMessage.setRetained(retained);
             mqttMessage.setId(messageId);
-            getClient(clientHandler).publish(topic, mqttMessage);
+            getClient(clientHandler).publish(topic, mqttMessage, iActionListener);
         }
     };
 

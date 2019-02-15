@@ -12,31 +12,6 @@ import android.os.RemoteException;
 
 public interface IClient extends IInterface {
 
-    boolean isConnected(String clientHandler) throws RemoteException;
-
-    void connect(String clientHandler, String serverURI, String clientId,
-                 ConnectOptions options) throws RemoteException;
-
-    void addIClientListener(String clientHandler, IClientListener iClientListener) throws
-            RemoteException;
-
-    void removeIClientListener(String clientHandler, IClientListener iClientListener)
-            throws RemoteException;
-
-    void publish(String clientHandler, String topic, byte[] payload, int qos,
-                 boolean retained) throws RemoteException;
-
-    void subscribe(String clientHandler, String topicFilter, int qos) throws
-            RemoteException;
-
-    void subscribe(String clientHandler, String[] topicFilters, int[] qos) throws
-            RemoteException;
-
-    void disconnect(String clientHandler) throws RemoteException;
-
-    void publish(String clientHandler, String topic, String message, int qos,
-                 boolean retained, int messageId) throws RemoteException;
-
     public static abstract class Stub extends Binder implements IClient {
         public static final String DESCRIPTOR = "vivek.wo.mqtt.IClient";
 
@@ -60,18 +35,6 @@ public interface IClient extends IInterface {
         public IBinder asBinder() {
             return this;
         }
-
-        static final int TRANSACTION_publish = IBinder.FIRST_CALL_TRANSACTION + 6;
-        static final int TRANSACTION_publish2 = IBinder.FIRST_CALL_TRANSACTION + 7;
-
-        static final int TRANSACTION_addIClientListener = IBinder.FIRST_CALL_TRANSACTION + 0;
-        static final int TRANSACTION_removeIClientListener = IBinder.FIRST_CALL_TRANSACTION + 1;
-        static final int TRANSACTION_connect = IBinder.FIRST_CALL_TRANSACTION + 2;
-        static final int TRANSACTION_subscribe = IBinder.FIRST_CALL_TRANSACTION + 3;
-        static final int TRANSACTION_subscribe2 = IBinder.FIRST_CALL_TRANSACTION + 4;
-        static final int TRANSACTION_disconnect = IBinder.FIRST_CALL_TRANSACTION + 5;
-
-        static final int TRANSACTION_isConnected = IBinder.FIRST_CALL_TRANSACTION + 8;
 
         @Override
         protected boolean onTransact(int code, Parcel data, Parcel reply, int flags) throws
@@ -118,13 +81,15 @@ public interface IClient extends IInterface {
                     _arg1 = data.readString();
                     java.lang.String _arg2;
                     _arg2 = data.readString();
-                    vivek.wo.mqtt.ConnectOptions _arg3;
+                    ConnectOptions _arg3;
                     if ((0 != data.readInt())) {
-                        _arg3 = vivek.wo.mqtt.ConnectOptions.CREATOR.createFromParcel(data);
+                        _arg3 = ConnectOptions.CREATOR.createFromParcel(data);
                     } else {
                         _arg3 = null;
                     }
-                    this.connect(_arg0, _arg1, _arg2, _arg3);
+                    IActionListener _arg4;
+                    _arg4 = IActionListener.Stub.asInterface(data.readStrongBinder());
+                    this.connect(_arg0, _arg1, _arg2, _arg3, _arg4);
                     reply.writeNoException();
                     return true;
                 }
@@ -136,7 +101,9 @@ public interface IClient extends IInterface {
                     _arg1 = data.readString();
                     int _arg2;
                     _arg2 = data.readInt();
-                    this.subscribe(_arg0, _arg1, _arg2);
+                    IActionListener _arg3;
+                    _arg3 = IActionListener.Stub.asInterface(data.readStrongBinder());
+                    this.subscribe(_arg0, _arg1, _arg2, _arg3);
                     reply.writeNoException();
                     return true;
                 }
@@ -148,7 +115,9 @@ public interface IClient extends IInterface {
                     _arg1 = data.createStringArray();
                     int[] _arg2;
                     _arg2 = data.createIntArray();
-                    this.subscribe(_arg0, _arg1, _arg2);
+                    IActionListener _arg3;
+                    _arg3 = IActionListener.Stub.asInterface(data.readStrongBinder());
+                    this.subscribe(_arg0, _arg1, _arg2, _arg3);
                     reply.writeNoException();
                     return true;
                 }
@@ -172,7 +141,9 @@ public interface IClient extends IInterface {
                     _arg3 = data.readInt();
                     boolean _arg4;
                     _arg4 = data.readInt() == 1;
-                    this.publish(_arg0, _arg1, _arg2, _arg3, _arg4);
+                    IActionListener _arg5;
+                    _arg5 = IActionListener.Stub.asInterface(data.readStrongBinder());
+                    this.publish(_arg0, _arg1, _arg2, _arg3, _arg4, _arg5);
                     reply.writeNoException();
                     return true;
                 }
@@ -190,7 +161,9 @@ public interface IClient extends IInterface {
                     _arg4 = data.readInt() == 1;
                     int _arg5;
                     _arg5 = data.readInt();
-                    this.publish(_arg0, _arg1, _arg2, _arg3, _arg4, _arg5);
+                    IActionListener _arg6;
+                    _arg6 = IActionListener.Stub.asInterface(data.readStrongBinder());
+                    this.publish(_arg0, _arg1, _arg2, _arg3, _arg4, _arg5, _arg6);
                     reply.writeNoException();
                     return true;
                 }
@@ -266,7 +239,7 @@ public interface IClient extends IInterface {
 
             @Override
             public void connect(String clientHandler, String serverURI, String clientId,
-                                ConnectOptions options) throws RemoteException {
+                                ConnectOptions options, IActionListener iActionListener) throws RemoteException {
                 android.os.Parcel _data = android.os.Parcel.obtain();
                 android.os.Parcel _reply = android.os.Parcel.obtain();
                 try {
@@ -280,6 +253,8 @@ public interface IClient extends IInterface {
                     } else {
                         _data.writeInt(0);
                     }
+                    _data.writeStrongBinder((iActionListener != null ? iActionListener.asBinder()
+                            : null));
                     mRemote.transact(TRANSACTION_connect, _data, _reply, 0);
                     _reply.readException();
                 } finally {
@@ -289,8 +264,8 @@ public interface IClient extends IInterface {
             }
 
             @Override
-            public void subscribe(String clientHandler, String topicFilter, int qos) throws
-                    RemoteException {
+            public void subscribe(String clientHandler, String topicFilter, int qos,
+                                  IActionListener iActionListener) throws RemoteException {
                 android.os.Parcel _data = android.os.Parcel.obtain();
                 android.os.Parcel _reply = android.os.Parcel.obtain();
                 try {
@@ -298,6 +273,8 @@ public interface IClient extends IInterface {
                     _data.writeString(clientHandler);
                     _data.writeString(topicFilter);
                     _data.writeInt(qos);
+                    _data.writeStrongBinder((iActionListener != null ? iActionListener.asBinder()
+                            : null));
                     mRemote.transact(TRANSACTION_subscribe, _data, _reply, 0);
                     _reply.readException();
                 } finally {
@@ -307,8 +284,8 @@ public interface IClient extends IInterface {
             }
 
             @Override
-            public void subscribe(String clientHandler, String[] topicFilters, int[] qos) throws
-                    RemoteException {
+            public void subscribe(String clientHandler, String[] topicFilters, int[] qos,
+                                  IActionListener iActionListener) throws RemoteException {
                 android.os.Parcel _data = android.os.Parcel.obtain();
                 android.os.Parcel _reply = android.os.Parcel.obtain();
                 try {
@@ -316,6 +293,8 @@ public interface IClient extends IInterface {
                     _data.writeString(clientHandler);
                     _data.writeStringArray(topicFilters);
                     _data.writeIntArray(qos);
+                    _data.writeStrongBinder((iActionListener != null ? iActionListener.asBinder()
+                            : null));
                     mRemote.transact(TRANSACTION_subscribe2, _data, _reply, 0);
                     _reply.readException();
                 } finally {
@@ -341,7 +320,7 @@ public interface IClient extends IInterface {
 
             @Override
             public void publish(String clientHandler, String topic, byte[] payload, int qos,
-                                boolean retained) throws RemoteException {
+                                boolean retained, IActionListener iActionListener) throws RemoteException {
                 android.os.Parcel _data = android.os.Parcel.obtain();
                 android.os.Parcel _reply = android.os.Parcel.obtain();
                 try {
@@ -351,6 +330,8 @@ public interface IClient extends IInterface {
                     _data.writeByteArray(payload);
                     _data.writeInt(qos);
                     _data.writeInt(retained ? 1 : 0);
+                    _data.writeStrongBinder((iActionListener != null ? iActionListener.asBinder()
+                            : null));
                     mRemote.transact(TRANSACTION_publish, _data, _reply, 0);
                     _reply.readException();
                 } finally {
@@ -361,7 +342,7 @@ public interface IClient extends IInterface {
 
             @Override
             public void publish(String clientHandler, String topic, String message, int qos,
-                                boolean retained, int messageId) throws RemoteException {
+                                boolean retained, int messageId, IActionListener iActionListener) throws RemoteException {
                 android.os.Parcel _data = android.os.Parcel.obtain();
                 android.os.Parcel _reply = android.os.Parcel.obtain();
                 try {
@@ -372,6 +353,8 @@ public interface IClient extends IInterface {
                     _data.writeInt(qos);
                     _data.writeInt(retained ? 1 : 0);
                     _data.writeInt(messageId);
+                    _data.writeStrongBinder((iActionListener != null ? iActionListener.asBinder()
+                            : null));
                     mRemote.transact(TRANSACTION_publish2, _data, _reply, 0);
                     _reply.readException();
                 } finally {
@@ -386,7 +369,43 @@ public interface IClient extends IInterface {
             }
         }
 
+        static final int TRANSACTION_addIClientListener = IBinder.FIRST_CALL_TRANSACTION + 0;
+        static final int TRANSACTION_removeIClientListener = IBinder.FIRST_CALL_TRANSACTION + 1;
+        static final int TRANSACTION_connect = IBinder.FIRST_CALL_TRANSACTION + 2;
+        static final int TRANSACTION_subscribe = IBinder.FIRST_CALL_TRANSACTION + 3;
+        static final int TRANSACTION_subscribe2 = IBinder.FIRST_CALL_TRANSACTION + 4;
+        static final int TRANSACTION_disconnect = IBinder.FIRST_CALL_TRANSACTION + 5;
+        static final int TRANSACTION_publish = IBinder.FIRST_CALL_TRANSACTION + 6;
+        static final int TRANSACTION_publish2 = IBinder.FIRST_CALL_TRANSACTION + 7;
+
+        static final int TRANSACTION_isConnected = IBinder.FIRST_CALL_TRANSACTION + 8;
+
 
     }
+
+    void addIClientListener(String clientHandler, IClientListener iClientListener) throws
+            RemoteException;
+
+    void removeIClientListener(String clientHandler, IClientListener iClientListener)
+            throws RemoteException;
+
+    boolean isConnected(String clientHandler) throws RemoteException;
+
+    void connect(String clientHandler, String serverURI, String clientId,
+                 ConnectOptions options, IActionListener iActionListener) throws RemoteException;
+
+    void subscribe(String clientHandler, String topicFilter, int qos, IActionListener iActionListener) throws
+            RemoteException;
+
+    void subscribe(String clientHandler, String[] topicFilters, int[] qos, IActionListener iActionListener) throws
+            RemoteException;
+
+    void disconnect(String clientHandler) throws RemoteException;
+
+    void publish(String clientHandler, String topic, byte[] payload, int qos,
+                 boolean retained, IActionListener iActionListener) throws RemoteException;
+
+    void publish(String clientHandler, String topic, String message, int qos,
+                 boolean retained, int messageId, IActionListener iActionListener) throws RemoteException;
 
 }

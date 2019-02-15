@@ -35,8 +35,6 @@ public class Client implements MqttCallbackExtended {
 
     private boolean mIsExcuteInited = false;// 是否执行过connect初始化
 
-    private Object object = new Object();
-
     Client(String clientHandler) {
         mClientHandler = clientHandler;
     }
@@ -112,7 +110,7 @@ public class Client implements MqttCallbackExtended {
         }
     }
 
-    void connect(ConnectOptions options) {
+    void connect(ConnectOptions options, final IActionListener iActionListener) {
         disconnect();
         mSubscribtionTopics = null;
         try {
@@ -120,9 +118,33 @@ public class Client implements MqttCallbackExtended {
             mMqttClient.setCallback(this);
             setMqttConnectOptions(options);
             if (mOpts != null) {
-                IMqttToken token = mMqttClient.connect(mOpts);
-                token.waitForCompletion();
-                mIsExcuteInited = true;
+                IMqttToken token = mMqttClient.connect(mOpts, null, new IMqttActionListener() {
+                    @Override
+                    public void onSuccess(IMqttToken asyncActionToken) {
+                        mIsExcuteInited = true;
+                        Log.w(TAG, Client.this + " , " + mClientHandler + " onSuccess: connect");
+                        if (iActionListener != null) {
+                            try {
+                                iActionListener.onSuccess(null);
+                            } catch (RemoteException e) {
+                                e.printStackTrace();
+                            }
+                        }
+                    }
+
+                    @Override
+                    public void onFailure(IMqttToken asyncActionToken, Throwable exception) {
+                        mIsExcuteInited = true;
+                        Log.w(TAG, Client.this + " , " + mClientHandler + " onFailure: connect");
+                        if (iActionListener != null) {
+                            try {
+                                iActionListener.onFailure(null, exception.getMessage());
+                            } catch (RemoteException e) {
+                                e.printStackTrace();
+                            }
+                        }
+                    }
+                });
             }
         } catch (MqttException e) {
             e.printStackTrace();
@@ -141,75 +163,152 @@ public class Client implements MqttCallbackExtended {
         }
     }
 
-    void subscribe(String subscribtionTopic, int qos) {
+    void subscribe(String subscribtionTopic, int qos, final IActionListener iActionListener) {
         subscribeTopic(new String[]{subscribtionTopic});
         if (isConnected()) {
             try {
-                IMqttToken token = mMqttClient.subscribe(subscribtionTopic, qos, object,
+                IMqttToken token = mMqttClient.subscribe(subscribtionTopic, qos, null,
                         new IMqttActionListener() {
                             @Override
                             public void onSuccess(IMqttToken asyncActionToken) {
-                                Log.d(TAG, "onSuccess: subscribe");
+                                Log.d(TAG, Client.this + " , " + mClientHandler + " onSuccess: subscribe");
+                                if (iActionListener != null) {
+                                    try {
+                                        iActionListener.onSuccess(null);
+                                    } catch (RemoteException e) {
+                                        e.printStackTrace();
+                                    }
+                                }
                             }
 
                             @Override
                             public void onFailure(IMqttToken asyncActionToken, Throwable
                                     exception) {
-
-                                Log.d(TAG, "onFailure: subscribe");
+                                Log.d(TAG, Client.this + " , " + mClientHandler + " onFailure: subscribe");
+                                if (iActionListener != null) {
+                                    try {
+                                        iActionListener.onFailure(null, exception.getMessage());
+                                    } catch (RemoteException e) {
+                                        e.printStackTrace();
+                                    }
+                                }
                             }
                         });
-                token.waitForCompletion();
             } catch (MqttException e) {
                 e.printStackTrace();
             }
         }
     }
 
-    void subscribe(String[] subscribtionTopics) {
+    void subscribe(String[] subscribtionTopics, IActionListener iActionListener) {
         subscribeTopic(subscribtionTopics);
-        subscribe();
+        subscribe(iActionListener);
     }
 
-    private void subscribe() {
+    private void subscribe(final IActionListener iActionListener) {
         if (isConnected()) {
             int[] qos = new int[mSubscribtionTopics.length];
             for (int i = 0; i < mSubscribtionTopics.length; i++) {
                 qos[i] = 2;
             }
             try {
-                IMqttToken token = mMqttClient.subscribe(mSubscribtionTopics, qos, object,
+                IMqttToken token = mMqttClient.subscribe(mSubscribtionTopics, qos, null,
                         new IMqttActionListener() {
                             @Override
                             public void onSuccess(IMqttToken asyncActionToken) {
-                                Log.d(TAG, "onSuccess: subscribe");
+                                Log.d(TAG, Client.this + " , " + mClientHandler + " onSuccess: subscribe");
+                                if (iActionListener != null) {
+                                    try {
+                                        iActionListener.onSuccess(null);
+                                    } catch (RemoteException e) {
+                                        e.printStackTrace();
+                                    }
+                                }
                             }
 
                             @Override
                             public void onFailure(IMqttToken asyncActionToken, Throwable
                                     exception) {
-
-                                Log.d(TAG, "onFailure: subscribe");
+                                Log.d(TAG, Client.this + " , " + mClientHandler + " onFailure: subscribe");
+                                if (iActionListener != null) {
+                                    try {
+                                        iActionListener.onFailure(null, exception.getMessage());
+                                    } catch (RemoteException e) {
+                                        e.printStackTrace();
+                                    }
+                                }
                             }
                         });
-                token.waitForCompletion();
             } catch (MqttException e) {
                 e.printStackTrace();
             }
         }
     }
 
-    void publish(String topic, byte[] payload, int qos, boolean retained) {
+    void publish(String topic, byte[] payload, int qos, boolean retained,
+                 final IActionListener iActionListener) {
         try {
-            mMqttClient.publish(topic, payload, qos, retained);
+            mMqttClient.publish(topic, payload, qos, retained, null,
+                    new IMqttActionListener() {
+                        @Override
+                        public void onSuccess(IMqttToken asyncActionToken) {
+                            Log.w(TAG, Client.this + " , " + mClientHandler + " onSuccess: pusblish");
+                            if (iActionListener != null) {
+                                try {
+                                    iActionListener.onSuccess(null);
+                                } catch (RemoteException e) {
+                                    e.printStackTrace();
+                                }
+                            }
+                        }
+
+                        @Override
+                        public void onFailure(IMqttToken asyncActionToken, Throwable
+                                exception) {
+                            Log.w(TAG, Client.this + " , " + mClientHandler + " onFailure: pusblish");
+                            if (iActionListener != null) {
+                                try {
+                                    iActionListener.onFailure(null, exception.getMessage());
+                                } catch (RemoteException e) {
+                                    e.printStackTrace();
+                                }
+                            }
+                        }
+                    });
         } catch (MqttException e) {
             e.printStackTrace();
         }
     }
 
-    void publish(String topic, MqttMessage mqttMessage) {
+    void publish(String topic, MqttMessage mqttMessage, final IActionListener iActionListener) {
         try {
-            mMqttClient.publish(topic, mqttMessage);
+            mMqttClient.publish(topic, mqttMessage, null,
+                    new IMqttActionListener() {
+                        @Override
+                        public void onSuccess(IMqttToken asyncActionToken) {
+                            Log.d(TAG, Client.this + " , " + mClientHandler + " onSuccess: pusblish");
+                            if (iActionListener != null) {
+                                try {
+                                    iActionListener.onSuccess(null);
+                                } catch (RemoteException e) {
+                                    e.printStackTrace();
+                                }
+                            }
+                        }
+
+                        @Override
+                        public void onFailure(IMqttToken asyncActionToken, Throwable
+                                exception) {
+                            Log.d(TAG, Client.this + " , " + mClientHandler + " onFailure: pusblish");
+                            if (iActionListener != null) {
+                                try {
+                                    iActionListener.onFailure(null, exception.getMessage());
+                                } catch (RemoteException e) {
+                                    e.printStackTrace();
+                                }
+                            }
+                        }
+                    });
         } catch (MqttException e) {
             e.printStackTrace();
         }
@@ -221,7 +320,7 @@ public class Client implements MqttCallbackExtended {
 
     @Override
     public void connectComplete(boolean reconnect, String serverURI) {
-        Log.d(TAG, "connectComplete: " + reconnect);
+        Log.d(TAG, this + " , " + mClientHandler + " connectComplete: " + reconnect);
         if (mIClientListenerList != null) {
             int count = mIClientListenerList.beginBroadcast();
             for (int i = 0; i < count; i++) {
@@ -235,14 +334,14 @@ public class Client implements MqttCallbackExtended {
             mIClientListenerList.finishBroadcast();
         }
         if (reconnect && mSubscribtionTopics != null) {
-            subscribe();
+            subscribe(null);
         }
     }
 
     @Override
     public void connectionLost(Throwable cause) {
         cause.printStackTrace();
-        Log.d(TAG, "connectionLost: " + cause.getMessage());
+        Log.d(TAG, this + " , " + mClientHandler + " connectionLost: " + cause.getMessage());
         if (mIClientListenerList != null) {
             int count = mIClientListenerList.beginBroadcast();
             for (int i = 0; i < count; i++) {
@@ -259,7 +358,8 @@ public class Client implements MqttCallbackExtended {
 
     @Override
     public void messageArrived(String topic, MqttMessage message) throws Exception {
-        Log.d(TAG, "messageArrived: " + topic + " , " + message.getId());
+        Log.d(TAG, this + " , " + mClientHandler + " messageArrived: " + topic + " , "
+                + message.getId() + " , " + message.toString());
         if (mIClientListenerList != null) {
             int count = mIClientListenerList.beginBroadcast();
             for (int i = 0; i < count; i++) {
