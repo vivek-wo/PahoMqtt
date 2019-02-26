@@ -47,9 +47,11 @@ public interface IActionListener extends IInterface {
                     data.enforceInterface(DESCRIPTOR);
                     String _arg0;
                     _arg0 = data.readString();
-                    String _arg1;
-                    _arg1 = data.readString();
-                    this.onFailure(_arg0, _arg1);
+                    int _arg1;
+                    _arg1 = data.readInt();
+                    String _arg2;
+                    _arg2 = data.readString();
+                    this.onFailure(_arg0, _arg1, _arg2);
                     reply.writeNoException();
                     return true;
                 }
@@ -97,12 +99,13 @@ public interface IActionListener extends IInterface {
             }
 
             @Override
-            public void onFailure(String userContext, String detailMessage) throws RemoteException {
+            public void onFailure(String userContext, int code, String detailMessage) throws RemoteException {
                 Parcel _data = Parcel.obtain();
                 Parcel _reply = Parcel.obtain();
                 try {
                     _data.writeInterfaceToken(DESCRIPTOR);
                     _data.writeString(userContext);
+                    _data.writeInt(code);
                     _data.writeString(detailMessage);
                     mRemote.transact(TRANSACTION_onFailure, _data, _reply, 0);
                     _reply.readException();
@@ -119,5 +122,5 @@ public interface IActionListener extends IInterface {
 
     void onSuccess(String userContext) throws RemoteException;
 
-    void onFailure(String userContext, String detailMessage) throws RemoteException;
+    void onFailure(String userContext, int code, String detailMessage) throws RemoteException;
 }

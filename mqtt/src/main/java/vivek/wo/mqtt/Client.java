@@ -136,9 +136,23 @@ public class Client implements MqttCallbackExtended {
                     public void onFailure(IMqttToken asyncActionToken, Throwable exception) {
                         mIsExcuteInited = true;
                         Log.w(TAG, Client.this + " , " + mClientHandler + " onFailure: connect");
+                        MqttException mqttException = null;
+                        int reasonCode = -1000;
+                        if (exception instanceof MqttException) {
+                            mqttException = (MqttException) exception;
+                        }
+                        if (mqttException != null) {
+                            mqttException.printStackTrace();
+                            reasonCode = mqttException.getReasonCode();
+                            Log.w(TAG, Client.this + " , " + mClientHandler
+                                    + " connect onFailure reason : " + mqttException.getReasonCode()
+                                    + " , " + mqttException.getMessage());
+                        } else {
+                            exception.printStackTrace();
+                        }
                         if (iActionListener != null) {
                             try {
-                                iActionListener.onFailure(null, exception.getMessage());
+                                iActionListener.onFailure(null, reasonCode, exception.getMessage());
                             } catch (RemoteException e) {
                                 e.printStackTrace();
                             }
@@ -187,7 +201,8 @@ public class Client implements MqttCallbackExtended {
                                 Log.d(TAG, Client.this + " , " + mClientHandler + " onFailure: subscribe");
                                 if (iActionListener != null) {
                                     try {
-                                        iActionListener.onFailure(null, exception.getMessage());
+                                        int reasonCode = -1000;
+                                        iActionListener.onFailure(null, reasonCode, exception.getMessage());
                                     } catch (RemoteException e) {
                                         e.printStackTrace();
                                     }
@@ -232,7 +247,8 @@ public class Client implements MqttCallbackExtended {
                                 Log.d(TAG, Client.this + " , " + mClientHandler + " onFailure: subscribe");
                                 if (iActionListener != null) {
                                     try {
-                                        iActionListener.onFailure(null, exception.getMessage());
+                                        int reasonCode = -1000;
+                                        iActionListener.onFailure(null, reasonCode, exception.getMessage());
                                     } catch (RemoteException e) {
                                         e.printStackTrace();
                                     }
@@ -268,7 +284,8 @@ public class Client implements MqttCallbackExtended {
                             Log.w(TAG, Client.this + " , " + mClientHandler + " onFailure: pusblish");
                             if (iActionListener != null) {
                                 try {
-                                    iActionListener.onFailure(null, exception.getMessage());
+                                    int reasonCode = -1000;
+                                    iActionListener.onFailure(null, reasonCode, exception.getMessage());
                                 } catch (RemoteException e) {
                                     e.printStackTrace();
                                 }
@@ -302,7 +319,8 @@ public class Client implements MqttCallbackExtended {
                             Log.d(TAG, Client.this + " , " + mClientHandler + " onFailure: pusblish");
                             if (iActionListener != null) {
                                 try {
-                                    iActionListener.onFailure(null, exception.getMessage());
+                                    int reasonCode = -1000;
+                                    iActionListener.onFailure(null, reasonCode, exception.getMessage());
                                 } catch (RemoteException e) {
                                     e.printStackTrace();
                                 }
