@@ -1,12 +1,12 @@
 package vivek.wo.mqtt;
 
-/**
- * Created by VIVEK-WO on 2018/3/12.
- */
-
 public class PahoMqtt {
 
-    public PahoMqtt() {
+    public PahoMqtt get() {
+        return Holder.PAHO_MQTT;
     }
 
+    public static class Holder {
+        private static final PahoMqtt PAHO_MQTT = new PahoMqtt();
+    }
 }
