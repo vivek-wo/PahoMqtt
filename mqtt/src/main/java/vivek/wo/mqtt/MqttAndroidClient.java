@@ -33,15 +33,15 @@ public class MqttAndroidClient implements MqttCallbackExtended {
         this.mqttMessageCallback = mqttMessageCallback;
     }
 
-    public void init() throws MqttException {
+    public void create() throws MqttException {
         if (mqttAndroidClient != null) {
-            throw new MqttException(new IllegalStateException("Client inited"));
+            throw new MqttException(new IllegalStateException("Client created"));
         }
         mqttAndroidClient = new MqttAsyncClient(serverURI, clientId, null);
         mqttAndroidClient.setCallback(this);
     }
 
-    public void close() throws MqttException {
+    public void destroy() throws MqttException {
         if (mqttAndroidClient != null) {
             mqttAndroidClient.close();
         }
@@ -128,6 +128,23 @@ public class MqttAndroidClient implements MqttCallbackExtended {
 
         private MqttConnectOptions options;
 
+        /**
+         * Set a serverURI the client may connect to.
+         * <p>
+         * Each <code>serverURI</code> specifies the address of a server that the client
+         * may connect to. Two types of connection are supported <code>tcp://</code> for
+         * a TCP connection and <code>ssl://</code> for a TCP connection secured by
+         * SSL/TLS. For example:
+         * <ul>
+         * <li><code>tcp://localhost:1883</code></li>
+         * <li><code>ssl://localhost:8883</code></li>
+         * </ul>
+         * </P>
+         *
+         * @param serverURI the address of the server to connect to, specified as a URI.
+         * @param clientId  a client identifier that is unique on the server being
+         *                  connected to
+         */
         public Builder(String serverURI, String clientId) {
             this.serverURI = serverURI;
             this.clientId = clientId;
