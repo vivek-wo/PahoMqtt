@@ -12,4 +12,5 @@ public interface MqttMessageCallback {
      * @throws Exception
      */
     void messageArrived(String topic, MqttMessage message) throws Exception;
+
 }

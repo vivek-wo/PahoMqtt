@@ -11,13 +11,14 @@ import org.eclipse.paho.client.mqttv3.MqttMessage;
 
 import javax.net.SocketFactory;
 
-public class MqttAndroidClient implements MqttCallbackExtended {
+public class MqttAndroidClient {
     private String serverURI;
     private String clientId;
     private MqttAsyncClient mqttAndroidClient;
     private MqttConnectOptions options;
     private MqttConnectionCallback mqttConnectionCallback;
     private MqttMessageCallback mqttMessageCallback;
+    private MqttDeliveryCallback mqttDeliveryCallback;
 
     private MqttAndroidClient(String serverURI, String clientId, MqttConnectOptions options) {
         this.serverURI = serverURI;
@@ -33,94 +34,106 @@ public class MqttAndroidClient implements MqttCallbackExtended {
         this.mqttMessageCallback = mqttMessageCallback;
     }
 
-    public void create() throws MqttException {
+    public void setMqttDeliveryCallback(MqttDeliveryCallback mqttDeliveryCallback) {
+        this.mqttDeliveryCallback = mqttDeliveryCallback;
+    }
+
+    public void createMqttClient() throws MqttException {
         if (mqttAndroidClient != null) {
             throw new MqttException(new IllegalStateException("Client created"));
         }
         mqttAndroidClient = new MqttAsyncClient(serverURI, clientId, null);
-        mqttAndroidClient.setCallback(this);
+        mqttAndroidClient.setCallback(mMqttCallbackExtended);
     }
 
-    public void destroy() throws MqttException {
+    public void destroyMqttClient() throws MqttException {
         if (mqttAndroidClient != null) {
+            if (isConnected()) {
+                disconnectForcibly(0);
+            }
             mqttAndroidClient.close();
         }
         mqttAndroidClient = null;
+        mqttConnectionCallback = null;
+        mqttMessageCallback = null;
     }
 
-    boolean isConnected() {
+    public boolean isConnected() {
         return mqttAndroidClient.isConnected();
     }
 
-    IMqttToken disconnect(Object userContext, IMqttActionListener callback) throws MqttException {
+    public IMqttToken disconnect(Object userContext, IMqttActionListener callback) throws MqttException {
         return mqttAndroidClient.disconnect(userContext, callback);
     }
 
-    void disconnectForcibly(int quiesceTimeout) throws MqttException {
+    public void disconnectForcibly(int quiesceTimeout) throws MqttException {
         mqttAndroidClient.disconnectForcibly(quiesceTimeout);
     }
 
-    IMqttToken connect(Object userContext, IMqttActionListener callback) throws MqttException {
+    public IMqttToken connect(Object userContext, IMqttActionListener callback) throws MqttException {
         return mqttAndroidClient.connect(options, userContext, callback);
     }
 
-    void reconnect() throws MqttException {
+    public void reconnect() throws MqttException {
         mqttAndroidClient.reconnect();
     }
 
-    IMqttToken subscribe(String topicFilter, int qos, Object userContext,
-                         IMqttActionListener callback) throws MqttException {
+    public IMqttToken subscribe(String topicFilter, int qos, Object userContext,
+                                IMqttActionListener callback) throws MqttException {
         return mqttAndroidClient.subscribe(topicFilter, qos, userContext, callback);
     }
 
-    IMqttToken subscribe(String[] topicFilters, int[] qos, Object userContext,
-                         IMqttActionListener callback) throws MqttException {
+    public IMqttToken subscribe(String[] topicFilters, int[] qos, Object userContext,
+                                IMqttActionListener callback) throws MqttException {
         return mqttAndroidClient.subscribe(topicFilters, qos, userContext, callback);
     }
 
-    IMqttDeliveryToken publish(String topic, byte[] payload, int qos,
-                               boolean retained, Object userContext,
-                               IMqttActionListener callback) throws MqttException {
-        IMqttDeliveryToken token = mqttAndroidClient.publish(topic, payload, qos, retained,
+    public IMqttDeliveryToken publish(String topic, byte[] payload, int qos,
+                                      boolean retained, Object userContext,
+                                      IMqttActionListener callback) throws MqttException {
+        return mqttAndroidClient.publish(topic, payload, qos, retained,
                 userContext, callback);
-        return token;
     }
 
-    IMqttDeliveryToken publish(String topic, MqttMessage message, Object userContext,
-                               IMqttActionListener callback) throws MqttException {
-        IMqttDeliveryToken token = mqttAndroidClient.publish(topic, message,
+    public IMqttDeliveryToken publish(String topic, MqttMessage message, Object userContext,
+                                      IMqttActionListener callback) throws MqttException {
+        return mqttAndroidClient.publish(topic, message,
                 userContext, callback);
-        return token;
     }
 
-    boolean isAutomaticReconnect() {
+    public boolean isAutomaticReconnect() {
         return options.isAutomaticReconnect();
     }
 
-    @Override
-    public void connectComplete(boolean reconnect, String serverURI) {
-        if (mqttConnectionCallback != null) {
-            mqttConnectionCallback.connectComplete(reconnect, serverURI);
+    private MqttCallbackExtended mMqttCallbackExtended = new MqttCallbackExtended() {
+        @Override
+        public void connectComplete(boolean reconnect, String serverURI) {
+            if (mqttConnectionCallback != null) {
+                mqttConnectionCallback.connectComplete(reconnect, serverURI);
+            }
         }
-    }
 
-    @Override
-    public void connectionLost(Throwable cause) {
-        if (mqttConnectionCallback != null) {
-            mqttConnectionCallback.connectionLost(cause);
+        @Override
+        public void connectionLost(Throwable cause) {
+            if (mqttConnectionCallback != null) {
+                mqttConnectionCallback.connectionLost(cause);
+            }
         }
-    }
 
-    @Override
-    public void messageArrived(String topic, MqttMessage message) throws Exception {
-        if (mqttMessageCallback != null) {
-            mqttMessageCallback.messageArrived(topic, message);
+        @Override
+        public void messageArrived(String topic, MqttMessage message) throws Exception {
+            if (mqttMessageCallback != null) {
+                mqttMessageCallback.messageArrived(topic, message);
+            }
         }
-    }
 
-    @Override
-    public void deliveryComplete(IMqttDeliveryToken token) {
-    }
+        @Override
+        public void deliveryComplete(IMqttDeliveryToken token) {
+            if (mqttDeliveryCallback != null) {
+                mqttDeliveryCallback.deliveryComplete(token);
+            }
+        }
+    };
 
     public static class Builder {
         private String serverURI;
@@ -156,8 +169,9 @@ public class MqttAndroidClient implements MqttCallbackExtended {
          *
          * @param keepAliveInterval
          */
-        public void setKeepAliveInterval(int keepAliveInterval) {
+        public Builder setKeepAliveInterval(int keepAliveInterval) {
             this.options.setKeepAliveInterval(keepAliveInterval);
+            return this;
         }
 
         /**
@@ -165,8 +179,9 @@ public class MqttAndroidClient implements MqttCallbackExtended {
          *
          * @param maxInflight
          */
-        public void setMaxInflight(int maxInflight) {
+        public Builder setMaxInflight(int maxInflight) {
             this.options.setMaxInflight(maxInflight);
+            return this;
         }
 
         /**
@@ -174,8 +189,9 @@ public class MqttAndroidClient implements MqttCallbackExtended {
          *
          * @param userName
          */
-        public void setUserName(String userName) {
+        public Builder setUserName(String userName) {
             this.options.setUserName(userName);
+            return this;
         }
 
         /**
@@ -183,8 +199,9 @@ public class MqttAndroidClient implements MqttCallbackExtended {
          *
          * @param password
          */
-        public void setPassword(char[] password) {
+        public Builder setPassword(char[] password) {
             this.options.setPassword(password);
+            return this;
         }
 
         /**
@@ -192,8 +209,9 @@ public class MqttAndroidClient implements MqttCallbackExtended {
          *
          * @param socketFactory
          */
-        public void setSocketFactory(SocketFactory socketFactory) {
+        public Builder setSocketFactory(SocketFactory socketFactory) {
             this.options.setSocketFactory(socketFactory);
+            return this;
         }
 
         /**
@@ -201,8 +219,9 @@ public class MqttAndroidClient implements MqttCallbackExtended {
          *
          * @param cleanSession
          */
-        public void setCleanSession(boolean cleanSession) {
+        public Builder setCleanSession(boolean cleanSession) {
             this.options.setCleanSession(cleanSession);
+            return this;
         }
 
         /**
@@ -210,8 +229,9 @@ public class MqttAndroidClient implements MqttCallbackExtended {
          *
          * @param connectionTimeout
          */
-        public void setConnectionTimeout(int connectionTimeout) {
+        public Builder setConnectionTimeout(int connectionTimeout) {
             this.options.setConnectionTimeout(connectionTimeout);
+            return this;
         }
 
         /**
@@ -219,8 +239,9 @@ public class MqttAndroidClient implements MqttCallbackExtended {
          *
          * @param mqttVersion
          */
-        public void setMqttVersion(int mqttVersion) {
+        public Builder setMqttVersion(int mqttVersion) {
             this.options.setMqttVersion(mqttVersion);
+            return this;
         }
 
         /**
@@ -228,8 +249,9 @@ public class MqttAndroidClient implements MqttCallbackExtended {
          *
          * @param automaticReconnect
          */
-        public void setAutomaticReconnect(boolean automaticReconnect) {
+        public Builder setAutomaticReconnect(boolean automaticReconnect) {
             this.options.setAutomaticReconnect(automaticReconnect);
+            return this;
         }
 
         /**
@@ -237,8 +259,9 @@ public class MqttAndroidClient implements MqttCallbackExtended {
          *
          * @param maxReconnectDelay
          */
-        public void setMaxReconnectDelay(int maxReconnectDelay) {
+        public Builder setMaxReconnectDelay(int maxReconnectDelay) {
             this.options.setMaxReconnectDelay(maxReconnectDelay);
+            return this;
         }
 
         public MqttAndroidClient build() {
